@@ -1,0 +1,11 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+.mise.local.toml
+node_modules
+bun.lockb
+coverage
+apps/web/.svelte-kit
+apps/web/build
+packages/db/drizzle
