@@ -21,8 +21,8 @@ Larry is an AI sports chat app with the mouth of a barstool diehard and the rece
 - `packages/db` - Drizzle schema, migrations, and seeds
 - `packages/ai` - sports-fan persona and orchestration helpers
 - `packages/search` - live search and citation normalization contracts
+- `apps/web/Dockerfile` - container image for dev and production SSR
 - `docs/prds` - product and implementation planning docs
-- `docker/web` - container image for dev and production SSR
 
 ## Product stance
 
@@ -37,12 +37,9 @@ Larry is an AI sports chat app with the mouth of a barstool diehard and the rece
 1. `cp .env.example .env`
 2. `mise install`
 3. `mise run install`
-4. `mise run docker:up`
-5. `mise run db:push`
-6. `mise run seed`
-7. `mise run dev`
+4. `mise run dev`
 
-To run the app inside Docker instead, use `mise run dev:docker`.
+For the full hot-reloading Docker stack instead, use `mise run dev:docker` for attached logs or `mise run docker:up` to run it detached. The Compose stack boots `postgres`, `mailpit`, a one-shot schema bootstrap, and the SvelteKit app together.
 
 ## Auth setup
 
@@ -59,6 +56,9 @@ To run the app inside Docker instead, use `mise run dev:docker`.
 ## Core commands
 
 - `mise run dev` - run the SvelteKit app locally with Bun
+- `mise run dev:docker` - run the full Dockerized stack with hot reload and attached logs
+- `mise run docker:up` - run the full Dockerized stack detached
+- `mise run docker:down` - stop Docker services
 - `mise run lint` - run Biome linting
 - `mise run format` - format the repo with Biome
 - `mise run check` - run Svelte and TypeScript checks

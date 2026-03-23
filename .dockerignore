@@ -1,0 +1,6 @@
+.git
+.gitignore
+node_modules
+apps/web/.svelte-kit
+apps/web/build
+packages/db/drizzle

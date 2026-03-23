@@ -15,9 +15,9 @@
 		"db:push": "bun run --cwd packages/db push",
 		"db:studio": "bun run --cwd packages/db studio",
 		"seed": "bun run --cwd packages/db seed",
-		"docker:up": "docker compose up -d postgres mailpit",
+		"docker:up": "docker compose up -d --build",
 		"docker:down": "docker compose down",
-		"dev:docker": "docker compose up --build web"
+		"dev:docker": "docker compose up --build"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4"
