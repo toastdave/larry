@@ -7,13 +7,13 @@ Create the technical and product foundation for a fast-moving SvelteKit monolith
 ## MVP scope
 
 - Monorepo structure with `apps/web`, `packages/db`, `packages/ai`, and `packages/search`
-- Bun-native SSR output, local Docker services, and mise task runners
-- Environment handling, database schema ownership, and local seeding
+- Bun-native SSR output, local Docker services, detached full-stack Docker dev, Tailscale Serve access, and mise task runners
+- Environment handling, database schema ownership, local seeding, and remote-preview runbooks
 - Shared design tokens, landing page, auth routes, and starter chat shell
 
 ## Requirements
 
-- Local setup works from a fresh clone with documented commands.
+- Local, full Docker, and tailnet preview setups work from a fresh clone with documented commands.
 - Core environments exist for local, preview, and production.
 - Database changes are versioned and repeatable.
 - The app shell is opinionated enough to guide future chat and account work.
@@ -23,6 +23,7 @@ Create the technical and product foundation for a fast-moving SvelteKit monolith
 - Lock workspace conventions, scripts, and package versions.
 - Set up Biome, strict TypeScript checks, and baseline tests.
 - Containerize Postgres, mail testing, and SSR app runtime.
+- Add reset instructions, detached Docker workflows, and Tailscale Serve tasks.
 - Add environment variables for auth, billing, AI routing, and search providers.
 - Build the initial SvelteKit shell with public, auth, chat, and account routes.
 - Seed baseline plans and a default Larry persona profile.
@@ -31,7 +32,7 @@ Create the technical and product foundation for a fast-moving SvelteKit monolith
 
 - A new developer can start the app locally in under 15 minutes.
 - The app builds with Bun SSR output.
-- Schema, seeds, and local services run without manual patching.
+- Schema, seeds, local services, and tailnet preview run without manual patching.
 
 ## Non-goals
 

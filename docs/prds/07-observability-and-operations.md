@@ -23,7 +23,7 @@ Make every retrieval and response path inspectable enough that product, support,
 - Define provider event taxonomy and persistence rules.
 - Store retrieval requests, tool calls, and usage ledger events.
 - Add log correlation between message, tool, and provider identifiers.
-- Document operational runbooks for provider outages and billing mismatches.
+- Document operational runbooks for provider outages, local Docker lifecycle, Tailscale Serve setup, and billing mismatches.
 
 ## Acceptance criteria
 

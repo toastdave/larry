@@ -2,74 +2,164 @@
 
 Larry is an AI sports chat app with the mouth of a barstool diehard and the receipts to back it up.
 
-## Locked stack
+## Requirements
 
-- `SvelteKit` + `Svelte 5`
-- `Tailwind CSS v4`
-- `Drizzle ORM`
-- `Postgres`
-- `Better Auth`
-- `AI SDK` + `Vercel AI Gateway`
-- `Bun workspaces`
-- `Biome`
-- `Docker Compose`
 - `mise`
+- `Docker` with `docker compose`
+- `Tailscale` for mandatory local tailnet access
 
-## Workspace layout
+## Getting started
 
-- `apps/web` - landing page, auth, chat shell, and account surfaces
-- `packages/db` - Drizzle schema, migrations, and seeds
-- `packages/ai` - sports-fan persona and orchestration helpers
-- `packages/search` - live search and citation normalization contracts
-- `apps/web/Dockerfile` - container image for dev and production SSR
-- `docs/prds` - product and implementation planning docs
+1. Copy the example environment file:
 
-## Product stance
+```bash
+cp .env.example .env
+```
 
-- Larry should sound like a loud, opinionated sports fan at a bar.
-- Larry should still fetch fresh data for live topics like scores, odds, trades, injuries, standings, and schedules.
-- Larry should separate opinions from factual claims and attach citations when using live data.
-- Billing is planned as a hybrid model: subscriptions plus usage-based overage or credit packs.
-- Ads should stay outside the active chat loop and never influence factual answers.
+2. Update `.env` for your machine:
 
-## Quick start
+```dotenv
+BETTER_AUTH_URL=https://<device>.<tailnet>.ts.net:7422
+BETTER_AUTH_TRUSTED_ORIGINS=http://localhost:7422,https://<device>.<tailnet>.ts.net:7422
+```
 
-1. `cp .env.example .env`
-2. `mise install`
-3. `mise run install`
-4. `mise run dev`
+3. Install the toolchain and dependencies:
 
-For the full hot-reloading Docker stack instead, use `mise run dev:docker` for attached logs or `mise run docker:up` to run it detached. The Compose stack boots `postgres`, `mailpit`, a one-shot schema bootstrap, and the SvelteKit app together.
+```bash
+mise install
+mise run install
+```
+
+4. Choose a development workflow:
+
+- `mise run dev` for the web app on your host machine with Docker-managed support services
+- `mise run dev:docker` for the entire stack in Docker with hot reload
+
+## Local development
+
+Run the supporting services in Docker and the web app on your host machine.
+
+Start:
+
+```bash
+mise run docker:up
+mise run db:push
+mise run seed
+mise run dev
+```
+
+App URLs:
+
+- Web app: `http://localhost:7422`
+- Mailpit: `http://localhost:8025`
+- Postgres: `postgresql://postgres:postgres@localhost:5432/larry`
+
+Stop supporting services:
+
+```bash
+mise run docker:down
+```
+
+Reset local infrastructure data:
+
+```bash
+docker compose down -v
+```
+
+The app supports hot reload in this mode. Leave the Docker services running while you edit files locally.
+
+## Full Docker development
+
+Run the entire app stack inside Docker with hot reload.
+
+Start:
+
+```bash
+mise run dev:docker
+```
+
+This task runs detached. Follow the app logs with:
+
+```bash
+docker compose logs -f web
+```
+
+In another shell, initialize the database if needed:
+
+```bash
+mise run db:push
+mise run seed
+```
+
+Open:
+
+- Web app: `http://localhost:7422`
+- Mailpit: `http://localhost:8025`
+- Postgres: `postgresql://postgres:postgres@localhost:5432/larry`
+
+Stop:
+
+```bash
+mise run docker:down
+```
+
+Reset all Docker data:
+
+```bash
+docker compose down -v
+```
+
+The stack is safe to leave running during development. Code changes are picked up by the containerized Vite dev server.
+
+## Tailscale access
+
+Expose the web app to your tailnet after either local or full Docker development is running.
+
+Local development in this repo assumes the tailnet URL is available for auth callbacks and cross-device testing.
+
+This repo uses the same port locally and over Tailscale so multiple projects can share one tailnet node without colliding on `443`.
+
+Start Tailscale Serve:
+
+```bash
+mise run tailscale:up
+```
+
+Check status:
+
+```bash
+mise run tailscale:status
+```
+
+Stop serving over Tailscale:
+
+```bash
+mise run tailscale:down
+```
+
+Open the app from another device on your tailnet:
+
+```text
+https://<device>.<tailnet>.ts.net:7422
+```
+
+Use the full `https://` URL. This setup serves HTTPS on port `7422`; `http://` requests to the tailnet hostname will fail.
 
 ## Auth setup
 
-- Email/password auth uses `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL`.
-- GitHub OAuth callback: `http://localhost:5173/api/auth/callback/github`
-- Google OAuth callback: `http://localhost:5173/api/auth/callback/google`
+- Email/password auth uses `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, and `BETTER_AUTH_TRUSTED_ORIGINS`.
+- GitHub OAuth callback: `http://localhost:7422/api/auth/callback/github`
+- Google OAuth callback: `http://localhost:7422/api/auth/callback/google`
+- For tailnet access, use the same callback paths on `https://<device>.<tailnet>.ts.net:7422`
 
-## AI and data setup
+## Common commands
 
-- Chat routing is expected to use `AI_GATEWAY_API_KEY`.
-- Primary chat model defaults to `openai/gpt-5-mini`.
-- Search and sports data are planned behind separate provider keys so Larry can combine narrative context with live structured facts.
-
-## Core commands
-
-- `mise run dev` - run the SvelteKit app locally with Bun
-- `mise run dev:docker` - run the full Dockerized stack with hot reload and attached logs
-- `mise run docker:up` - run the full Dockerized stack detached
-- `mise run docker:down` - stop Docker services
-- `mise run lint` - run Biome linting
-- `mise run format` - format the repo with Biome
-- `mise run check` - run Svelte and TypeScript checks
-- `mise run test` - run Bun tests
-- `mise run build` - produce the SSR build
-- `mise run db:generate` - generate Drizzle migrations
-- `mise run db:migrate` - apply migrations
-- `mise run db:studio` - open Drizzle Studio
-
-## Notes
-
-- The repo starts as a `SvelteKit` monolith plus focused workspace packages for AI and search.
-- The billing schema is in place early so inference cost controls are part of the foundation.
-- The ad strategy is documented in `docs/prds/08-growth-and-advertising.md` and intentionally avoids degrading the chat experience.
+```bash
+mise run check
+mise run lint
+mise run test
+mise run build
+mise run db:generate
+mise run db:migrate
+mise run db:studio
+```
