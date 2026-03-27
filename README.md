@@ -19,8 +19,8 @@ cp .env.example .env
 2. Update `.env` for your machine:
 
 ```dotenv
-BETTER_AUTH_URL=https://<device>.<tailnet>.ts.net:7422
-BETTER_AUTH_TRUSTED_ORIGINS=http://localhost:7422,https://<device>.<tailnet>.ts.net:7422
+BETTER_AUTH_URL=https://<device>.<tailnet>.ts.net:1501
+BETTER_AUTH_TRUSTED_ORIGINS=http://localhost:1501,https://<device>.<tailnet>.ts.net:1501
 ```
 
 3. Install the toolchain and dependencies:
@@ -50,9 +50,9 @@ mise run dev
 
 App URLs:
 
-- Web app: `http://localhost:7422`
-- Mailpit: `http://localhost:8025`
-- Postgres: `postgresql://postgres:postgres@localhost:5432/larry`
+- Web app: `http://localhost:1501`
+- Mailpit: `http://localhost:1504`
+- Postgres: `postgresql://postgres:postgres@localhost:1502/larry`
 
 Stop supporting services:
 
@@ -93,9 +93,9 @@ mise run seed
 
 Open:
 
-- Web app: `http://localhost:7422`
-- Mailpit: `http://localhost:8025`
-- Postgres: `postgresql://postgres:postgres@localhost:5432/larry`
+- Web app: `http://localhost:1501`
+- Mailpit: `http://localhost:1504`
+- Postgres: `postgresql://postgres:postgres@localhost:1502/larry`
 
 Stop:
 
@@ -140,17 +140,17 @@ mise run tailscale:down
 Open the app from another device on your tailnet:
 
 ```text
-https://<device>.<tailnet>.ts.net:7422
+https://<device>.<tailnet>.ts.net:1501
 ```
 
-Use the full `https://` URL. This setup serves HTTPS on port `7422`; `http://` requests to the tailnet hostname will fail.
+Use the full `https://` URL. This setup serves HTTPS on port `1501`; `http://` requests to the tailnet hostname will fail.
 
 ## Auth setup
 
 - Email/password auth uses `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, and `BETTER_AUTH_TRUSTED_ORIGINS`.
-- GitHub OAuth callback: `http://localhost:7422/api/auth/callback/github`
-- Google OAuth callback: `http://localhost:7422/api/auth/callback/google`
-- For tailnet access, use the same callback paths on `https://<device>.<tailnet>.ts.net:7422`
+- GitHub OAuth callback: `http://localhost:1501/api/auth/callback/github`
+- Google OAuth callback: `http://localhost:1501/api/auth/callback/google`
+- For tailnet access, use the same callback paths on `https://<device>.<tailnet>.ts.net:1501`
 
 ## Common commands
 
