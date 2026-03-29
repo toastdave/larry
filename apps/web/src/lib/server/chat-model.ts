@@ -61,6 +61,7 @@ export function createLarryTextStream(input: {
 		providerMetadata?: unknown
 		usage?: unknown
 	}) => Promise<void> | void
+	searchContext?: string | null
 }) {
 	const route = resolveChatProviderRoute()
 	const model =
@@ -83,7 +84,9 @@ export function createLarryTextStream(input: {
 				usage: event.totalUsage,
 			})
 		},
-		system: createSystemPrompt({ favoriteTeam: input.favoriteTeam }),
+		system: [createSystemPrompt({ favoriteTeam: input.favoriteTeam }), input.searchContext]
+			.filter(Boolean)
+			.join(' '),
 		temperature: 0.8,
 	})
 

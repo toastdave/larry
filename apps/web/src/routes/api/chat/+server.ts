@@ -5,6 +5,7 @@ import {
 	recordModelProviderEvent,
 	startConversationTurn,
 } from '$lib/server/chat-store'
+import { prepareSearchContext, recordSearchFailure } from '$lib/server/live-search'
 import { error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
 
@@ -74,6 +75,31 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		userId,
 	})
 
+	let searchContext: Awaited<ReturnType<typeof prepareSearchContext>> | null = null
+	let searchFailureMessage: string | null = null
+
+	if (startedTurn.userMessage.searchRequired) {
+		try {
+			searchContext = await prepareSearchContext({
+				conversationId: startedTurn.conversation.id,
+				messageId: startedTurn.userMessage.id,
+				prompt,
+				userId,
+			})
+		} catch (cause) {
+			searchFailureMessage =
+				cause instanceof Error ? cause.message : 'Search provider failed before answer generation.'
+
+			await recordSearchFailure({
+				conversationId: startedTurn.conversation.id,
+				errorMessage: searchFailureMessage,
+				messageId: startedTurn.userMessage.id,
+				prompt,
+				providerName: process.env.SEARCH_PROVIDER || 'tavily',
+			})
+		}
+	}
+
 	let finalPayloadPromise: Promise<FinalPayload> | null = null
 
 	return new Response(
@@ -87,6 +113,40 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 				return finalPayloadPromise
 			},
 			streamChunks: async function* () {
+				if (
+					startedTurn.userMessage.searchRequired &&
+					(!searchContext || searchContext.response.results.length === 0)
+				) {
+					const fallbackReply = buildLocalReply({
+						favoriteTeam: startedTurn.favoriteTeam,
+						historyCount: startedTurn.historyMessages.length,
+						prompt,
+					})
+
+					for (const chunk of chunkTextForStreaming(fallbackReply)) {
+						yield chunk
+					}
+
+					finalPayloadPromise = finishAssistantTurn({
+						conversationId: startedTurn.conversation.id,
+						metadata: {
+							fallback: true,
+							searchFailureMessage,
+							searchWarning: searchContext?.response.warning ?? null,
+						},
+						model: 'larry-local-fallback',
+						providerName: 'fallback',
+						replyText: fallbackReply,
+						userId,
+					}).then((assistantResult) => ({
+						assistantMessage: assistantResult.assistantMessage,
+						conversation: assistantResult.conversation,
+						userMessage: startedTurn.userMessage,
+					}))
+
+					return
+				}
+
 				let finishReason: string | null | undefined
 				let providerMetadata: unknown
 				let responseText = ''
@@ -100,6 +160,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 						providerMetadata = event.providerMetadata
 						usage = event.usage
 					},
+					searchContext: searchContext?.promptContext,
 				})
 
 				try {
@@ -112,11 +173,15 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
 					if (trimmedResponse) {
 						finalPayloadPromise = finishAssistantTurn({
+							citations: searchContext?.citations,
 							conversationId: startedTurn.conversation.id,
 							metadata: {
 								finishReason,
 								providerMetadata,
 								routeMode: chatStream.route.mode,
+								searchProvider: searchContext?.response.provider ?? null,
+								searchResultCount: searchContext?.response.results.length ?? 0,
+								searchWarning: searchContext?.response.warning ?? null,
 								usage,
 							},
 							model: chatStream.route.modelId,
@@ -168,6 +233,9 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 						finishReason,
 						providerMetadata,
 						routeMode: chatStream.route.mode,
+						searchProvider: searchContext?.response.provider ?? null,
+						searchResultCount: searchContext?.response.results.length ?? 0,
+						searchWarning: searchContext?.response.warning ?? null,
 						usage,
 					},
 					model: 'larry-local-fallback',

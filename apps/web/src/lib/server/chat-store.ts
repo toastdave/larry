@@ -1,15 +1,24 @@
 import { db } from '$lib/server/db'
 import {
+	citation,
 	conversation,
 	message,
 	messagePart,
 	type messageRoleEnum,
 	providerEvent,
+	searchQuery,
+	searchResult,
 	usageLedger,
 	userTeamPreference,
 } from '@larry/db/schema'
-import { requiresFreshSearch } from '@larry/search'
-import { and, asc, desc, eq } from 'drizzle-orm'
+import {
+	type NormalizedSearchResult,
+	type SearchResultType,
+	formatCitationLabel,
+	inferCitationKind,
+	requiresFreshSearch,
+} from '@larry/search'
+import { and, asc, desc, eq, inArray } from 'drizzle-orm'
 import { buildConversationSlug, buildConversationTitle } from './chat-helpers'
 
 type MessageRole = (typeof messageRoleEnum.enumValues)[number]
@@ -24,11 +33,21 @@ export type ConversationSummary = {
 }
 
 export type StoredMessage = {
+	citations: StoredCitation[]
 	contentText: string | null
 	createdAt: Date
 	id: string
 	role: MessageRole
 	searchRequired: boolean
+}
+
+export type StoredCitation = {
+	citedText: string | null
+	id: string
+	kind: 'article' | 'injury' | 'odds' | 'score' | 'standings'
+	label: string
+	sourceName: string
+	url: string
 }
 
 export type StartedConversationTurn = {
@@ -88,8 +107,9 @@ export async function loadConversationForUser(userId: string, slug: string | nul
 }
 
 async function getConversationMessages(conversationId: string) {
-	return db
+	const messages = await db
 		.select({
+			citationCount: message.citationCount,
 			contentText: message.contentText,
 			createdAt: message.createdAt,
 			id: message.id,
@@ -99,6 +119,48 @@ async function getConversationMessages(conversationId: string) {
 		.from(message)
 		.where(eq(message.conversationId, conversationId))
 		.orderBy(asc(message.createdAt))
+
+	if (messages.length === 0) {
+		return []
+	}
+
+	const citations = await db
+		.select({
+			citedText: citation.citedText,
+			id: citation.id,
+			kind: citation.kind,
+			label: citation.label,
+			messageId: citation.messageId,
+			sourceName: citation.sourceName,
+			url: citation.url,
+		})
+		.from(citation)
+		.where(
+			inArray(
+				citation.messageId,
+				messages.map((entry) => entry.id)
+			)
+		)
+
+	const citationsByMessage = new Map<string, StoredCitation[]>()
+
+	for (const item of citations) {
+		const entry = citationsByMessage.get(item.messageId) ?? []
+		entry.push({
+			citedText: item.citedText,
+			id: item.id,
+			kind: item.kind,
+			label: item.label,
+			sourceName: item.sourceName,
+			url: item.url,
+		})
+		citationsByMessage.set(item.messageId, entry)
+	}
+
+	return messages.map(({ citationCount: _citationCount, ...entry }) => ({
+		...entry,
+		citations: citationsByMessage.get(entry.id) ?? [],
+	}))
 }
 
 async function getFavoriteTeam(userId: string) {
@@ -138,7 +200,7 @@ async function insertMessageRecord(input: {
 	model?: string | null
 	role: MessageRole
 	searchRequired?: boolean
-}) {
+}): Promise<StoredMessage> {
 	const [createdMessage] = await db
 		.insert(message)
 		.values({
@@ -163,7 +225,10 @@ async function insertMessageRecord(input: {
 		type: 'text',
 	})
 
-	return createdMessage
+	return {
+		...createdMessage,
+		citations: [],
+	}
 }
 
 async function touchConversation(conversationId: string) {
@@ -234,17 +299,123 @@ export async function startConversationTurn(input: {
 export async function recordModelProviderEvent(input: {
 	payload: Record<string, unknown>
 	providerName: string
+	providerKind?: 'billing' | 'model' | 'search' | 'sports_data'
 	referenceId?: string | null
 }) {
 	await db.insert(providerEvent).values({
 		payload: input.payload,
-		providerKind: 'model',
+		providerKind: input.providerKind ?? 'model',
 		providerName: input.providerName,
 		referenceId: input.referenceId ?? null,
 	})
 }
 
+export async function recordSearchArtifacts(input: {
+	conversationId: string
+	messageId: string
+	providerName: string
+	queryText: string
+	results: NormalizedSearchResult[]
+	userId: string
+	warning?: string
+	league?: string | null
+	freshness?: string | null
+}) {
+	const [storedSearchQuery] = await db
+		.insert(searchQuery)
+		.values({
+			conversationId: input.conversationId,
+			freshness: input.freshness,
+			league: input.league,
+			provider: input.providerName,
+			queryText: input.queryText,
+		})
+		.returning({ id: searchQuery.id })
+
+	const storedResults =
+		input.results.length > 0
+			? await db
+					.insert(searchResult)
+					.values(
+						input.results.map((result, index) => ({
+							metadata: result.metadata ?? {},
+							providerResultId: result.id,
+							publishedAt: result.publishedAt ? new Date(result.publishedAt) : null,
+							ranking: index,
+							resultType: result.resultType,
+							searchQueryId: storedSearchQuery.id,
+							snippet: result.snippet,
+							sourceName: result.sourceName,
+							title: result.title,
+							url: result.url,
+						}))
+					)
+					.returning({
+						id: searchResult.id,
+						publishedAt: searchResult.publishedAt,
+						resultType: searchResult.resultType,
+						snippet: searchResult.snippet,
+						sourceName: searchResult.sourceName,
+						title: searchResult.title,
+						url: searchResult.url,
+					})
+			: []
+
+	await Promise.all([
+		recordModelProviderEvent({
+			payload: {
+				conversationId: input.conversationId,
+				messageId: input.messageId,
+				queryText: input.queryText,
+				resultCount: storedResults.length,
+				warning: input.warning ?? null,
+			},
+			providerKind: 'search',
+			providerName: input.providerName,
+			referenceId: storedSearchQuery.id,
+		}),
+		db.insert(usageLedger).values({
+			conversationId: input.conversationId,
+			costInCents: 0,
+			description: 'Live sports search retrieval',
+			entryType: 'search',
+			messageId: input.messageId,
+			metadata: {
+				queryText: input.queryText,
+				resultCount: storedResults.length,
+				warning: input.warning ?? null,
+			},
+			provider: input.providerName,
+			units: Math.max(storedResults.length, 1),
+			userId: input.userId,
+		}),
+	])
+
+	return {
+		results: storedResults.map((result) => ({
+			citedText: result.snippet,
+			kind: inferCitationKind(result.resultType as SearchResultType),
+			label: formatCitationLabel({
+				publishedAt: result.publishedAt?.toISOString() ?? null,
+				sourceName: result.sourceName,
+			}),
+			searchResultId: result.id,
+			sourceName: result.sourceName,
+			url: result.url,
+		})),
+		searchQueryId: storedSearchQuery.id,
+	}
+}
+
 export async function finishAssistantTurn(input: {
+	citations?: Array<{
+		citedText?: string | null
+		kind: 'article' | 'injury' | 'odds' | 'score' | 'standings'
+		label: string
+		searchResultId?: string | null
+		sourceName: string
+		url: string
+	}>
 	conversationId: string
 	metadata?: AssistantMetadata
 	model: string
@@ -258,6 +429,27 @@ export async function finishAssistantTurn(input: {
 		model: input.model,
 		role: 'assistant',
 	})
+
+	const citations = input.citations ?? []
+
+	if (citations.length > 0) {
+		await db.insert(citation).values(
+			citations.map((item) => ({
+				citedText: item.citedText ?? null,
+				kind: item.kind,
+				label: item.label,
+				messageId: assistantMessage.id,
+				searchResultId: item.searchResultId ?? null,
+				sourceName: item.sourceName,
+				url: item.url,
+			}))
+		)
+
+		await db
+			.update(message)
+			.set({ citationCount: citations.length })
+			.where(eq(message.id, assistantMessage.id))
+	}
 
 	const updatedConversation = await touchConversation(input.conversationId)
 
@@ -292,7 +484,17 @@ export async function finishAssistantTurn(input: {
 	])
 
 	return {
-		assistantMessage,
+		assistantMessage: {
+			...assistantMessage,
+			citations: citations.map((item, index) => ({
+				citedText: item.citedText ?? null,
+				id: `citation-${assistantMessage.id}-${index}`,
+				kind: item.kind,
+				label: item.label,
+				sourceName: item.sourceName,
+				url: item.url,
+			})),
+		},
 		conversation: updatedConversation,
 	}
 }

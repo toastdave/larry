@@ -6,6 +6,7 @@ describe('chat model helpers', () => {
 	test('builds model messages from persisted chat rows', () => {
 		const messages = buildModelMessages([
 			{
+				citations: [],
 				contentText: 'Talk to me about the Bills',
 				createdAt: new Date(),
 				id: '1',
@@ -13,6 +14,7 @@ describe('chat model helpers', () => {
 				searchRequired: false,
 			},
 			{
+				citations: [],
 				contentText: 'The Bills are a weekly trust exercise.',
 				createdAt: new Date(),
 				id: '2',

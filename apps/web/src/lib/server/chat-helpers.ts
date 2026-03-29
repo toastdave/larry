@@ -74,7 +74,7 @@ export function buildLocalReply({ favoriteTeam, historyCount = 0, prompt }: Repl
 
 	if (needsFreshSearch) {
 		return [
-			'All right, this is the kind of question where I should be checking live scores, odds, or injury wires before I pound the table. That live tool loop is not wired in this build yet, so I am not going to fake fresh facts.',
+			'All right, this is the kind of question where I should be checking live scores, odds, or injury wires before I pound the table. Live search is unavailable right now, so I am not going to fake fresh facts.',
 			`${leagueTake} My honest fan read is this: ${fandomNudge}`,
 		].join(' ')
 	}

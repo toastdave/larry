@@ -68,6 +68,7 @@ async function sendPrompt(promptOverride?: string) {
 	isSending = true
 
 	const optimisticUserMessage = {
+		citations: [],
 		contentText: prompt,
 		createdAt: new Date(),
 		id: `optimistic-user-${crypto.randomUUID()}`,
@@ -76,6 +77,7 @@ async function sendPrompt(promptOverride?: string) {
 	}
 
 	const optimisticAssistantMessage = {
+		citations: [],
 		contentText: '',
 		createdAt: new Date(),
 		id: `optimistic-assistant-${crypto.randomUUID()}`,
@@ -210,7 +212,8 @@ function handleSubmit(event: SubmitEvent) {
 			</h1>
 			<p class="mt-4 text-sm leading-7 text-ink-700">
 				Conversations now persist, history is saved, and Larry answers through the AI SDK with
-				environment-based provider routing. Live search and citations are still the next layer.
+				environment-based provider routing. Live sports questions now trigger retrieval before the
+				answer lands, and citation rendering is live in the transcript.
 			</p>
 
 			<ul class="mt-6 space-y-3 text-sm leading-7 text-ink-700">
@@ -261,6 +264,18 @@ function handleSubmit(event: SubmitEvent) {
 								{message.role} · {formatUpdatedAt(message.createdAt)}
 							</p>
 							<p class="mt-2 whitespace-pre-wrap">{message.contentText}</p>
+							{#if message.role === 'assistant' && message.citations.length > 0}
+								<div class="mt-4 rounded-2xl border border-ink-950/10 bg-white/65 p-4 text-xs text-ink-700">
+									<p class="uppercase tracking-[0.24em] text-ink-700/65">Citations</p>
+									<div class="mt-3 flex flex-wrap gap-2">
+										{#each message.citations as citation}
+											<a class="rounded-full border border-ink-950/10 bg-cream-100 px-3 py-2 transition hover:border-redline-500/40 hover:bg-white" href={citation.url} rel="noreferrer" target="_blank">
+												{citation.label}
+											</a>
+										{/each}
+									</div>
+								</div>
+							{/if}
 							{#if index === messages.length - 1 && isSending && message.role === 'assistant'}
 								<p class="mt-3 text-xs uppercase tracking-[0.22em] opacity-60">Larry is cooking...</p>
 							{/if}
@@ -300,8 +315,8 @@ function handleSubmit(event: SubmitEvent) {
 				<div class="mt-4 flex flex-wrap items-center justify-between gap-3">
 					<p class="text-sm text-ink-700">
 						{shouldSearch
-							? 'This prompt wants live data, so Larry will stay honest and avoid bluffing until retrieval lands.'
-							: 'Larry can answer this now, and the live retrieval layer is next on deck.'}
+							? 'This prompt wants live data, so Larry will search first and attach sources when the provider comes through.'
+							: 'Larry can answer this now, and the live retrieval layer stays on standby unless the question needs it.'}
 					</p>
 					<button class="rounded-full bg-ink-950 px-5 py-3 text-sm font-semibold text-cream-100 disabled:cursor-not-allowed disabled:opacity-70" disabled={isSending || !draft.trim()} type="submit">
 						{isSending ? 'Sending...' : 'Send'}
