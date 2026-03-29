@@ -4,16 +4,13 @@ import {
 	message,
 	messagePart,
 	type messageRoleEnum,
+	providerEvent,
+	usageLedger,
 	userTeamPreference,
 } from '@larry/db/schema'
 import { requiresFreshSearch } from '@larry/search'
 import { and, asc, desc, eq } from 'drizzle-orm'
-import {
-	buildConversationSlug,
-	buildConversationTitle,
-	buildLocalReply,
-	chunkTextForStreaming,
-} from './chat-helpers'
+import { buildConversationSlug, buildConversationTitle } from './chat-helpers'
 
 type MessageRole = (typeof messageRoleEnum.enumValues)[number]
 
@@ -34,11 +31,21 @@ export type StoredMessage = {
 	searchRequired: boolean
 }
 
-type SendMessageResult = {
-	assistantMessage: StoredMessage
+export type StartedConversationTurn = {
 	conversation: ConversationSummary
-	streamChunks: string[]
+	favoriteTeam: string | null
+	historyMessages: StoredMessage[]
 	userMessage: StoredMessage
+}
+
+type AssistantMetadata = {
+	[key: string]: unknown
+	errorMessage?: string
+	fallback?: boolean
+	finishReason?: string | null
+	providerMetadata?: unknown
+	routeMode?: 'hosted' | 'local'
+	usage?: unknown
 }
 
 export async function listConversationsForUser(userId: string) {
@@ -71,7 +78,17 @@ export async function loadConversationForUser(userId: string, slug: string | nul
 		}
 	}
 
-	const messages = await db
+	const messages = await getConversationMessages(activeConversation.id)
+
+	return {
+		activeConversation,
+		conversations,
+		messages,
+	}
+}
+
+async function getConversationMessages(conversationId: string) {
+	return db
 		.select({
 			contentText: message.contentText,
 			createdAt: message.createdAt,
@@ -80,14 +97,8 @@ export async function loadConversationForUser(userId: string, slug: string | nul
 			searchRequired: message.searchRequired,
 		})
 		.from(message)
-		.where(eq(message.conversationId, activeConversation.id))
+		.where(eq(message.conversationId, conversationId))
 		.orderBy(asc(message.createdAt))
-
-	return {
-		activeConversation,
-		conversations,
-		messages,
-	}
 }
 
 async function getFavoriteTeam(userId: string) {
@@ -177,7 +188,7 @@ async function touchConversation(conversationId: string) {
 	return updatedConversation
 }
 
-export async function sendMessageForUser(input: {
+export async function startConversationTurn(input: {
 	conversationSlug?: string | null
 	prompt: string
 	userId: string
@@ -200,11 +211,6 @@ export async function sendMessageForUser(input: {
 	const activeConversation =
 		existingConversation ?? (await createConversationForUser(input.userId, prompt))
 
-	const existingMessageCount = await db.$count(
-		message,
-		eq(message.conversationId, activeConversation.id)
-	)
-
 	const userMessage = await insertMessageRecord({
 		contentText: prompt,
 		conversationId: activeConversation.id,
@@ -212,26 +218,81 @@ export async function sendMessageForUser(input: {
 		searchRequired: requiresFreshSearch(prompt),
 	})
 
-	const favoriteTeam = await getFavoriteTeam(input.userId)
-	const assistantReply = buildLocalReply({
-		favoriteTeam,
-		historyCount: existingMessageCount,
-		prompt,
-	})
+	const [favoriteTeam, historyMessages] = await Promise.all([
+		getFavoriteTeam(input.userId),
+		getConversationMessages(activeConversation.id),
+	])
 
+	return {
+		conversation: activeConversation,
+		favoriteTeam,
+		historyMessages,
+		userMessage,
+	} satisfies StartedConversationTurn
+}
+
+export async function recordModelProviderEvent(input: {
+	payload: Record<string, unknown>
+	providerName: string
+	referenceId?: string | null
+}) {
+	await db.insert(providerEvent).values({
+		payload: input.payload,
+		providerKind: 'model',
+		providerName: input.providerName,
+		referenceId: input.referenceId ?? null,
+	})
+}
+
+export async function finishAssistantTurn(input: {
+	conversationId: string
+	metadata?: AssistantMetadata
+	model: string
+	providerName: string
+	replyText: string
+	userId: string
+}) {
 	const assistantMessage = await insertMessageRecord({
-		contentText: assistantReply,
-		conversationId: activeConversation.id,
-		model: 'larry-local-fallback',
+		contentText: input.replyText,
+		conversationId: input.conversationId,
+		model: input.model,
 		role: 'assistant',
 	})
 
-	const updatedConversation = await touchConversation(activeConversation.id)
+	const updatedConversation = await touchConversation(input.conversationId)
+
+	await Promise.all([
+		recordModelProviderEvent({
+			payload: {
+				...input.metadata,
+				conversationId: input.conversationId,
+				messageId: assistantMessage.id,
+				model: input.model,
+				replyLength: input.replyText.length,
+			},
+			providerName: input.providerName,
+			referenceId: assistantMessage.id,
+		}),
+		db.insert(usageLedger).values({
+			conversationId: input.conversationId,
+			costInCents: 0,
+			description: 'Chat response generation',
+			entryType: 'inference',
+			messageId: assistantMessage.id,
+			metadata: {
+				...input.metadata,
+				model: input.model,
+				providerName: input.providerName,
+			},
+			model: input.model,
+			provider: input.providerName,
+			units: 1,
+			userId: input.userId,
+		}),
+	])
 
 	return {
 		assistantMessage,
 		conversation: updatedConversation,
-		streamChunks: chunkTextForStreaming(assistantReply),
-		userMessage,
-	} satisfies SendMessageResult
+	}
 }

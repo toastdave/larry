@@ -15,6 +15,7 @@
 		"test": "bun test"
 	},
 	"dependencies": {
+		"@ai-sdk/openai": "2.0.61",
 		"@better-auth/drizzle-adapter": "^1.5.5",
 		"@larry/ai": "workspace:*",
 		"@larry/db": "workspace:*",

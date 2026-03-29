@@ -21,6 +21,7 @@ cp .env.example .env
 ```dotenv
 BETTER_AUTH_URL=https://<device>.<tailnet>.ts.net:1501
 BETTER_AUTH_TRUSTED_ORIGINS=http://localhost:1501,https://<device>.<tailnet>.ts.net:1501
+AI_PROVIDER_TARGET=local
 ```
 
 3. Install the toolchain and dependencies:
@@ -34,6 +35,12 @@ mise run install
 
 - `mise run dev` for the web app on your host machine with Docker-managed support services
 - `mise run dev:docker` for the entire stack in Docker with hot reload
+
+For real AI responses in local development, run Ollama on your machine and pull the default model:
+
+```bash
+ollama pull llama3.1:8b
+```
 
 ## Local development
 
@@ -111,6 +118,8 @@ docker compose down -v
 
 The stack is safe to leave running during development. Code changes are picked up by the containerized Vite dev server.
 
+For full Docker development, the app container reaches Ollama on your host through `host.docker.internal`.
+
 ## Tailscale access
 
 Expose the web app to your tailnet after either local or full Docker development is running.
@@ -151,6 +160,13 @@ Use the full `https://` URL. This setup serves HTTPS on port `1501`; `http://` r
 - GitHub OAuth callback: `http://localhost:1501/api/auth/callback/github`
 - Google OAuth callback: `http://localhost:1501/api/auth/callback/google`
 - For tailnet access, use the same callback paths on `https://<device>.<tailnet>.ts.net:1501`
+
+## AI setup
+
+- Local development defaults to Ollama with `AI_PROVIDER_TARGET=local` and `AI_OLLAMA_BASE_URL`.
+- Hosted environments should switch to `AI_PROVIDER_TARGET=hosted` and provide `AI_GATEWAY_API_KEY` so Larry can route to Gemini through the Vercel AI SDK.
+- Default local model: `llama3.1:8b`
+- Default hosted model: `google/gemini-2.5-flash`
 
 ## Common commands
 

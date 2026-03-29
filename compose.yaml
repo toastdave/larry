@@ -32,10 +32,13 @@ services:
     env_file:
       - .env
     environment:
+      AI_OLLAMA_BASE_URL: http://host.docker.internal:11434/v1
       CHOKIDAR_USEPOLLING: 'true'
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/larry
       SMTP_HOST: mailpit
       WATCHPACK_POLLING: 'true'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
     depends_on:
       postgres:
         condition: service_healthy

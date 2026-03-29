@@ -209,8 +209,8 @@ function handleSubmit(event: SubmitEvent) {
 				Ready for game-day chaos, {data.user.name}.
 			</h1>
 			<p class="mt-4 text-sm leading-7 text-ink-700">
-				Conversations now persist, history is saved, and Larry answers through a streaming endpoint.
-				Live search and provider-backed model routing are still the next layer.
+				Conversations now persist, history is saved, and Larry answers through the AI SDK with
+				environment-based provider routing. Live search and citations are still the next layer.
 			</p>
 
 			<ul class="mt-6 space-y-3 text-sm leading-7 text-ink-700">
