@@ -16,11 +16,13 @@ Make Larry feel unmistakable: funny, biased, sharp, and barroom-conversational w
 - Larry should feel entertaining on every turn.
 - Larry should clearly signal when he is joking, speculating, or leaning into fandom.
 - Larry should not invent live facts when tools fail.
+- Prompting and response shaping should remain portable across the local Ollama setup and the production Gemini setup.
 - Persona variants should be configurable without rewriting app code.
 
 ## Task breakdown
 
 - Define the core system prompt and persona rules in `packages/ai`.
+- Keep prompt construction decoupled from any single model SDK so it can run cleanly through the Vercel AI SDK provider layer.
 - Add user preference hooks for favorite and rival teams.
 - Add response-shaping guidance for banter-only versus live-facts questions.
 - Store persona profiles in the database for future experimentation.

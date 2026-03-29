@@ -4,12 +4,13 @@
 
 - Finalize repository conventions, environments, local containers, and CI entrypoints.
 - Establish Drizzle schema ownership, seed data, and workspace task runners.
+- Lock the Vercel AI SDK as the inference layer and wire environment-based provider config for Ollama locally and Gemini in hosted environments.
 - Ship the public shell, auth flows, and starter account and chat routes.
 
 ## Phase 2 - Conversations And Persistence
 
 - Implement conversation creation, message persistence, and saved history surfaces.
-- Add the initial streaming chat endpoint and loading, success, and error states.
+- Add the initial Vercel AI SDK streaming chat endpoint and loading, success, and error states.
 - Add mobile-friendly composer and transcript layouts.
 
 ## Phase 3 - Live Search And Citations
@@ -27,6 +28,7 @@
 ## Phase 5 - Operations And Growth
 
 - Add provider event tracing, operational runbooks, and reliability dashboards.
+- Harden provider switching, tracing, and incident handling for Ollama in local development and Gemini in hosted environments.
 - Add recap, sharing, and referral surfaces.
 - Evaluate sponsorship placements that do not degrade the primary chat loop.
 
@@ -35,5 +37,6 @@
 - Every core route works on mobile and desktop.
 - Core actions have empty, loading, success, and error states.
 - Auth, AI, search, sports-data, and billing secrets are separated by environment.
+- AI inference runs through the Vercel AI SDK, with Ollama as the default local provider and Gemini as the hosted provider path.
 - Retrieval and answer failures are traceable from UI to provider metadata.
 - Pricing and sponsorship surfaces are disclosed clearly before launch.

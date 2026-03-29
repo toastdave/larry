@@ -9,12 +9,14 @@ Create the technical and product foundation for a fast-moving SvelteKit monolith
 - Monorepo structure with `apps/web`, `packages/db`, `packages/ai`, and `packages/search`
 - Bun-native SSR output, local Docker services, detached full-stack Docker dev, Tailscale Serve access, and mise task runners
 - Environment handling, database schema ownership, local seeding, and remote-preview runbooks
+- Vercel AI SDK as the shared inference layer, with Ollama for local development and Google Gemini for hosted environments
 - Shared design tokens, landing page, auth routes, and starter chat shell
 
 ## Requirements
 
 - Local, full Docker, and tailnet preview setups work from a fresh clone with documented commands.
 - Core environments exist for local, preview, and production.
+- AI provider selection is environment-driven so local builds use Ollama and hosted builds can route to Gemini without app-level rewrites.
 - Database changes are versioned and repeatable.
 - The app shell is opinionated enough to guide future chat and account work.
 
@@ -25,6 +27,7 @@ Create the technical and product foundation for a fast-moving SvelteKit monolith
 - Containerize Postgres, mail testing, and SSR app runtime.
 - Add reset instructions, detached Docker workflows, and Tailscale Serve tasks.
 - Add environment variables for auth, billing, AI routing, and search providers.
+- Define the Vercel AI SDK integration boundary and provider configuration for Ollama locally and Gemini in preview and production.
 - Build the initial SvelteKit shell with public, auth, chat, and account routes.
 - Seed baseline plans and a default Larry persona profile.
 
@@ -32,6 +35,7 @@ Create the technical and product foundation for a fast-moving SvelteKit monolith
 
 - A new developer can start the app locally in under 15 minutes.
 - The app builds with Bun SSR output.
+- Local development can point chat inference at Ollama, while hosted environments can switch to Gemini through configuration.
 - Schema, seeds, local services, and tailnet preview run without manual patching.
 
 ## Non-goals
