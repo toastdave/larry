@@ -19,7 +19,8 @@
 		"@larry/ai": "workspace:*",
 		"@larry/db": "workspace:*",
 		"@larry/search": "workspace:*",
-		"better-auth": "^1.5.5"
+		"better-auth": "^1.5.5",
+		"drizzle-orm": "^0.44.6"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
