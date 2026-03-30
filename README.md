@@ -168,6 +168,12 @@ Use the full `https://` URL. This setup serves HTTPS on port `1501`; `http://` r
 - Default local model: `llama3.1:8b`
 - Default hosted model: `google/gemini-2.5-flash`
 
+## Live data setup
+
+- Narrative search defaults to Tavily through `SEARCH_PROVIDER=tavily`.
+- Structured scores and standings default to ESPN's public endpoints through `SPORTS_DATA_PROVIDER=espn`.
+- If Tavily is not configured, Larry can still use the structured ESPN feed for supported score and standings questions, but broader news context will be missing.
+
 ## Common commands
 
 ```bash

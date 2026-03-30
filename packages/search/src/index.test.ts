@@ -4,8 +4,10 @@ import {
 	formatCitationLabel,
 	inferCitationKind,
 	inferLeague,
+	mergeSearchResponses,
 	requiresFreshSearch,
 	searchSportsWeb,
+	searchStructuredSportsData,
 } from './index'
 
 describe('search package', () => {
@@ -57,5 +59,87 @@ describe('search package', () => {
 
 		expect(response.results).toEqual([])
 		expect(response.warning).toContain('SEARCH_API_KEY')
+	})
+
+	test('normalizes structured scoreboard results from ESPN', async () => {
+		const response = await searchStructuredSportsData({
+			fetch: (async () =>
+				new Response(
+					JSON.stringify({
+						events: [
+							{
+								competitions: [
+									{
+										competitors: [
+											{
+												homeAway: 'away',
+												score: '109',
+												team: { abbreviation: 'BOS', displayName: 'Boston Celtics' },
+											},
+											{
+												homeAway: 'home',
+												score: '101',
+												team: { abbreviation: 'NYK', displayName: 'New York Knicks' },
+											},
+										],
+										date: '2026-03-29T22:00:00.000Z',
+										name: 'Boston Celtics at New York Knicks',
+										status: { type: { detail: 'Final' } },
+										venue: { fullName: 'Madison Square Garden' },
+									},
+								],
+								id: 'game-1',
+							},
+						],
+					}),
+					{ status: 200 }
+				)) as unknown as typeof fetch,
+			provider: 'espn',
+			query: 'latest nba score tonight',
+		})
+
+		expect(response.results[0]?.resultType).toBe('scoreboard')
+		expect(response.results[0]?.sourceName).toBe('ESPN scoreboard')
+		expect(response.results[0]?.snippet).toContain('BOS 109 at NYK 101')
+	})
+
+	test('merges structured and narrative responses into one prompt context', () => {
+		const merged = mergeSearchResponses(
+			{
+				freshness: 'live',
+				league: 'NBA',
+				provider: 'espn',
+				query: 'latest nba score tonight',
+				results: [
+					{
+						id: 'structured-1',
+						resultType: 'scoreboard',
+						snippet: 'BOS 109 at NYK 101. Final.',
+						sourceName: 'ESPN scoreboard',
+						title: 'Boston Celtics at New York Knicks',
+						url: 'https://www.espn.com/nba/scoreboard',
+					},
+				],
+			},
+			{
+				freshness: 'live',
+				league: 'NBA',
+				provider: 'tavily',
+				query: 'latest nba score tonight',
+				results: [
+					{
+						id: 'web-1',
+						resultType: 'article',
+						snippet: 'Boston closed the game with a 14-2 run.',
+						sourceName: 'espn.com',
+						title: 'Celtics finish strong against Knicks',
+						url: 'https://www.espn.com/nba/story/_/id/1/celtics-finish-strong',
+					},
+				],
+			}
+		)
+
+		expect(merged.results).toHaveLength(2)
+		expect(buildSearchPromptContext(merged)).toContain('Live sports context is available')
 	})
 })

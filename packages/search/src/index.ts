@@ -26,6 +26,45 @@ export type SearchResponse = {
 	warning?: string
 }
 
+type EspnCompetition = {
+	competitors?: Array<{
+		homeAway?: 'away' | 'home'
+		records?: Array<{ summary?: string; type?: string }>
+		score?: string
+		team?: { abbreviation?: string; displayName?: string }
+		winner?: boolean
+	}>
+	date?: string
+	name?: string
+	status?: { type?: { detail?: string; shortDetail?: string } }
+	venue?: { fullName?: string }
+}
+
+type EspnEvent = {
+	competitions?: EspnCompetition[]
+	id?: string
+	name?: string
+	season?: { slug?: string; type?: number }
+	shortName?: string
+	status?: { type?: { detail?: string; shortDetail?: string } }
+}
+
+type EspnStandingEntry = {
+	stats?: Array<{
+		description?: string
+		displayValue?: string
+		name?: string
+		shortDisplayName?: string
+	}>
+	team?: { abbreviation?: string; displayName?: string }
+}
+
+type SportsDataRequest = {
+	fetch?: typeof fetch
+	provider?: string
+	query: string
+}
+
 type TavilyResult = {
 	content?: string
 	published_date?: string
@@ -94,6 +133,113 @@ function sourceNameFromUrl(url: string) {
 	} catch {
 		return 'Unknown source'
 	}
+}
+
+function leagueToEspnPath(league: SupportedLeague) {
+	switch (league) {
+		case 'MLB':
+			return 'baseball/mlb'
+		case 'NBA':
+			return 'basketball/nba'
+		case 'NCAAB':
+			return 'basketball/mens-college-basketball'
+		case 'NCAAF':
+			return 'football/college-football'
+		case 'NFL':
+			return 'football/nfl'
+	}
+}
+
+function prefersStandings(query: string) {
+	const value = query.toLowerCase()
+	return value.includes('standing') || value.includes('playoff picture') || value.includes('table')
+}
+
+function buildCompetitionSnippet(competition: EspnCompetition) {
+	const homeTeam = competition.competitors?.find((team) => team.homeAway === 'home')
+	const awayTeam = competition.competitors?.find((team) => team.homeAway === 'away')
+	const status =
+		competition.status?.type?.detail ??
+		competition.status?.type?.shortDetail ??
+		'Status unavailable'
+	const scoreLine = `${awayTeam?.team?.abbreviation ?? 'AWAY'} ${awayTeam?.score ?? '-'} at ${homeTeam?.team?.abbreviation ?? 'HOME'} ${homeTeam?.score ?? '-'}`
+
+	return `${scoreLine}. ${status}. Venue: ${competition.venue?.fullName ?? 'TBD'}.`
+}
+
+function buildStandingsSnippet(entry: EspnStandingEntry) {
+	const wins = entry.stats?.find((stat) => stat.name === 'wins' || stat.shortDisplayName === 'W')
+	const losses = entry.stats?.find(
+		(stat) => stat.name === 'losses' || stat.shortDisplayName === 'L'
+	)
+	const gamesBack = entry.stats?.find(
+		(stat) => stat.name === 'gamesBehind' || stat.shortDisplayName === 'GB'
+	)
+	const streak = entry.stats?.find(
+		(stat) => stat.name === 'streak' || stat.shortDisplayName === 'STRK'
+	)
+
+	return [
+		`Record: ${wins?.displayValue ?? '?'}-${losses?.displayValue ?? '?'}.`,
+		gamesBack?.displayValue ? `Games back: ${gamesBack.displayValue}.` : null,
+		streak?.displayValue ? `Streak: ${streak.displayValue}.` : null,
+	]
+		.filter(Boolean)
+		.join(' ')
+}
+
+function normalizeEspnScoreboardResults(league: SupportedLeague, events: EspnEvent[]) {
+	return events.flatMap((event) => {
+		const competition = event.competitions?.[0]
+
+		if (!competition) {
+			return []
+		}
+
+		const title = competition.name ?? event.name ?? event.shortName
+
+		if (!title) {
+			return []
+		}
+
+		return [
+			{
+				id: event.id ?? title,
+				metadata: {
+					league,
+					season: event.season?.slug ?? null,
+				},
+				publishedAt: competition.date ?? null,
+				resultType: 'scoreboard' satisfies SearchResultType,
+				snippet: buildCompetitionSnippet(competition),
+				sourceName: 'ESPN scoreboard',
+				title,
+				url: `https://www.espn.com/${league.toLowerCase()}/scoreboard`,
+			} satisfies NormalizedSearchResult,
+		]
+	})
+}
+
+function normalizeEspnStandingsResults(league: SupportedLeague, entries: EspnStandingEntry[]) {
+	return entries
+		.filter((entry): entry is EspnStandingEntry & { team: { displayName: string } } =>
+			Boolean(entry.team?.displayName)
+		)
+		.slice(0, 8)
+		.map((entry, index) => {
+			return {
+				id: `${league}-standing-${index + 1}`,
+				metadata: {
+					league,
+				},
+				publishedAt: null,
+				resultType: 'standing' satisfies SearchResultType,
+				snippet: buildStandingsSnippet(entry),
+				sourceName: 'ESPN standings',
+				title: `${entry.team.displayName} standings snapshot`,
+				url: `https://www.espn.com/${league.toLowerCase()}/standings`,
+			} satisfies NormalizedSearchResult
+		})
 }
 
 function normalizeTavilyResults(query: string, results: TavilyResult[]) {
@@ -195,6 +341,32 @@ export function buildSearchPromptContext(response: SearchResponse, maxResults = 
 	].join(' ')
 }
 
+export function mergeSearchResponses(...responses: SearchResponse[]): SearchResponse {
+	const firstResponse = responses[0]
+
+	if (!firstResponse) {
+		return {
+			freshness: 'general',
+			league: null,
+			provider: 'combined',
+			query: '',
+			results: [],
+		}
+	}
+
+	return {
+		freshness: responses.some((response) => response.freshness === 'live') ? 'live' : 'general',
+		league: firstResponse.league,
+		provider: responses.map((response) => response.provider).join('+'),
+		query: firstResponse.query,
+		results: responses.flatMap((response) => response.results),
+		warning: responses
+			.map((response) => response.warning)
+			.filter((warning): warning is string => Boolean(warning))
+			.join(' | '),
+	}
+}
+
 export async function searchSportsWeb({
 	apiKey,
 	fetch: fetchImpl = fetch,
@@ -255,5 +427,73 @@ export async function searchSportsWeb({
 		provider,
 		query,
 		results: normalizeTavilyResults(query, payload.results ?? []),
+	}
+}
+
+export async function searchStructuredSportsData({
+	fetch: fetchImpl = fetch,
+	provider = 'espn',
+	query,
+}: SportsDataRequest): Promise<SearchResponse> {
+	const league = inferLeague(query)
+	const freshness = requiresFreshSearch(query) ? 'live' : 'general'
+
+	if (!league) {
+		return {
+			freshness,
+			league: null,
+			provider,
+			query,
+			results: [],
+			warning: 'No supported league found for structured sports data.',
+		}
+	}
+
+	if (provider !== 'espn') {
+		return {
+			freshness,
+			league,
+			provider,
+			query,
+			results: [],
+			warning: `Unsupported sports data provider: ${provider}.`,
+		}
+	}
+
+	const sportPath = leagueToEspnPath(league)
+	const endpoint = prefersStandings(query)
+		? `https://site.api.espn.com/apis/site/v2/sports/${sportPath}/standings`
+		: `https://site.api.espn.com/apis/site/v2/sports/${sportPath}/scoreboard`
+
+	const response = await fetchImpl(endpoint)
+
+	if (!response.ok) {
+		throw new Error(`Structured sports data request failed with ${response.status}.`)
+	}
+
+	if (prefersStandings(query)) {
+		const payload = (await response.json()) as {
+			children?: Array<{ standings?: { entries?: EspnStandingEntry[] } }>
+		}
+
+		const entries = payload.children?.flatMap((child) => child.standings?.entries ?? []) ?? []
+
+		return {
+			freshness,
+			league,
+			provider,
+			query,
+			results: normalizeEspnStandingsResults(league, entries),
+		}
+	}
+
+	const payload = (await response.json()) as { events?: EspnEvent[] }
+
+	return {
+		freshness,
+		league,
+		provider,
+		query,
+		results: normalizeEspnScoreboardResults(league, payload.events ?? []),
 	}
 }
