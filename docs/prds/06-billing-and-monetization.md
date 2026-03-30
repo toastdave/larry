@@ -10,6 +10,7 @@ Launch a hybrid monetization system that keeps inference costs sustainable witho
 - Usage ledger for inference and search cost tracking
 - Entitlement model for subscriptions and overage support
 - Checkout and webhook hooks for Polar integration
+- Polar sandbox validation before live billing is enabled
 
 ## Requirements
 
@@ -17,6 +18,7 @@ Launch a hybrid monetization system that keeps inference costs sustainable witho
 - Search and inference costs are traceable at the user and message level.
 - Subscription access and future credit packs can coexist.
 - Monetization rules do not break the core chat experience.
+- Local development, Polar sandbox, and live production billing are treated as separate environments.
 
 ## Task breakdown
 
@@ -24,6 +26,7 @@ Launch a hybrid monetization system that keeps inference costs sustainable witho
 - Seed baseline plans with included chat and search allowances.
 - Define overage policy and future credit-pack behavior.
 - Add checkout and webhook PRD tasks for Polar.
+- Validate subscription checkout, webhook replay, and entitlement sync in Polar sandbox before enabling live billing.
 - Add product messaging for upgrade prompts and limit states.
 
 ## Acceptance criteria
@@ -31,6 +34,7 @@ Launch a hybrid monetization system that keeps inference costs sustainable witho
 - Plan definitions exist in the database and seed successfully.
 - Usage records can capture both inference and retrieval cost metadata.
 - The system can support subscription-first access with metered fallback.
+- The subscription upgrade path can be exercised in Polar sandbox without real-money transactions.
 
 ## Non-goals
 

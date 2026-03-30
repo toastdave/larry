@@ -174,6 +174,24 @@ Use the full `https://` URL. This setup serves HTTPS on port `1501`; `http://` r
 - Structured scores and standings default to ESPN's public endpoints through `SPORTS_DATA_PROVIDER=espn`.
 - If Tavily is not configured, Larry can still use the structured ESPN feed for supported score and standings questions, but broader news context will be missing.
 
+## Billing setup
+
+- `POLAR_ACCESS_TOKEN` is used for Polar API access.
+- `POLAR_WEBHOOK_SECRET` validates webhook deliveries.
+- `POLAR_SERVER` should stay on `sandbox` until subscription checkout and entitlement sync are verified end-to-end.
+
+## Billing environments
+
+- Local app development: use seeded plans and usage fixtures to exercise upgrade prompts, limits, and entitlement states.
+- Polar sandbox: use `https://sandbox.polar.sh/start` for fake-money checkout and `https://sandbox-api.polar.sh` for API calls.
+- Production Polar: enable only after sandbox checkout, webhook replay handling, and plan-sync behavior are verified.
+
+Sandbox notes:
+
+- Polar sandbox is a separate environment, not a production test-mode toggle.
+- Sandbox uses separate accounts, organizations, and tokens.
+- Stripe test cards work in Polar sandbox, for example `4242 4242 4242 4242` with a future expiry and any CVC.
+
 ## Common commands
 
 ```bash

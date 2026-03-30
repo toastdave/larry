@@ -23,6 +23,7 @@
 
 - Launch team preferences, persona controls, and opinion-versus-facts prompting.
 - Add usage ledgers, plan enforcement, and Polar checkout foundations.
+- Validate subscription checkout and entitlement sync in Polar sandbox before enabling live billing.
 - Add upgrade messaging and limit states in chat.
 
 ## Phase 5 - Operations And Growth
@@ -37,6 +38,7 @@
 - Every core route works on mobile and desktop.
 - Core actions have empty, loading, success, and error states.
 - Auth, AI, search, sports-data, and billing secrets are separated by environment.
+- Billing environments are explicit: local app development, Polar sandbox, then live production.
 - AI inference runs through the Vercel AI SDK, with Ollama as the default local provider and Gemini as the hosted provider path.
 - Retrieval and answer failures are traceable from UI to provider metadata.
 - Pricing and sponsorship surfaces are disclosed clearly before launch.
