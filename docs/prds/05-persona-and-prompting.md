@@ -19,7 +19,8 @@ Turn Larry into a multi-persona sports AI app with distinct voices that feel int
 - Completed: fallback behavior explicitly avoids inventing live facts when retrieval fails or returns nothing
 - Completed: search context can now be injected into the prompt so opinionated replies stay grounded for time-sensitive questions
 - Completed: persona profile primitives exist in the data model for future experimentation
-- Remaining: runtime persona selection, user-configurable team preferences in the live prompt path, rivalry hooks, and stronger safety guidance for gambling and abuse edges
+- Completed: runtime persona selection now supports Larry, Scout, and Vega at the conversation level
+- Remaining: user-configurable team preferences in the live prompt path, rivalry hooks, and stronger safety guidance for gambling and abuse edges
 
 ## Requirements
 

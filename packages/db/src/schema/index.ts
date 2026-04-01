@@ -144,6 +144,7 @@ export const conversation = pgTable(
 		ownerUserId: text('owner_user_id')
 			.notNull()
 			.references(() => user.id, { onDelete: 'cascade' }),
+		personaSlug: varchar('persona_slug', { length: 64 }).notNull().default('larry'),
 		slug: varchar('slug', { length: 96 }).notNull().unique(),
 		title: varchar('title', { length: 160 }).notNull(),
 		favoriteTeam: varchar('favorite_team', { length: 80 }),

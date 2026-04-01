@@ -1,13 +1,13 @@
 <script lang="ts">
 import { siteConfig } from '$lib/config/site'
-import { defaultConversationStarters } from '@larry/ai'
+import { defaultConversationStarters, sportsPersonas } from '@larry/ai'
 import { supportedLeagues } from '@larry/search'
 import type { PageData } from './$types'
 
 const { data } = $props<{ data: PageData }>()
 
 const pillars = [
-	'Opinionated sports-fan voice with fresh live data when facts matter',
+	'Multi-persona sports voices with fresh live data when facts matter',
 	'Chat-first product with citations, conversation history, and team preferences',
 	'Hybrid billing foundation for subscriptions plus overage or credit packs',
 	'Ad posture built around sponsorship surfaces, not chat interruption',
@@ -45,9 +45,10 @@ const planCards = [
 				An AI sports fan that talks trash, checks the tape, and keeps the receipts.
 			</h1>
 			<p class="max-w-2xl text-lg leading-8 text-ink-700">
-				Larry is built to argue like your smartest and loudest friend at the bar, while still
-				pulling fresh scores, standings, odds, headlines, and injury context when the stakes are
-				real.
+				Larry now gives you three booths to pick from: Larry for fan energy, Scout for the
+				scouting report, and Vega for odds-aware analysis with stricter freshness rules. Every
+				one still pulls fresh scores, standings, odds, headlines, and injury context when the
+				stakes are real.
 			</p>
 			<div class="flex flex-wrap gap-3">
 				<a class="rounded-full bg-ink-950 px-5 py-3 text-sm font-semibold text-cream-100" href={data.user ? '/chat' : '/auth/sign-up?redirectTo=/chat'}>
@@ -62,7 +63,7 @@ const planCards = [
 		<div class="rounded-[1.5rem] border border-ink-950/10 bg-ink-950 p-6 text-cream-100">
 			<p class="text-sm uppercase tracking-[0.28em] text-gold-400">What Larry should always do</p>
 			<ul class="mt-4 space-y-3 text-sm leading-7 text-cream-100/90">
-				{#each pillars as pillar}
+				{#each pillars as pillar (pillar)}
 					<li>{pillar}</li>
 				{/each}
 			</ul>
@@ -73,7 +74,7 @@ const planCards = [
 		<div class="rounded-[1.75rem] border border-ink-950/10 bg-white/82 p-7 shadow-[0_24px_80px_-56px_rgba(8,23,17,0.6)] backdrop-blur">
 			<p class="text-sm uppercase tracking-[0.28em] text-field-500">Stack direction</p>
 			<div class="mt-5 grid gap-3 text-sm text-ink-900 sm:grid-cols-2">
-				{#each layers as layer}
+				{#each layers as layer (layer)}
 					<div class="rounded-2xl border border-ink-950/8 bg-cream-100/80 px-4 py-3">{layer}</div>
 				{/each}
 			</div>
@@ -82,7 +83,7 @@ const planCards = [
 		<div class="rounded-[1.75rem] border border-ink-950/10 bg-white/82 p-7 shadow-[0_24px_80px_-56px_rgba(8,23,17,0.6)] backdrop-blur">
 			<p class="text-sm uppercase tracking-[0.28em] text-redline-500">Launch sports</p>
 			<div class="mt-5 flex flex-wrap gap-3 text-sm text-ink-900">
-				{#each supportedLeagues as league}
+				{#each supportedLeagues as league (league)}
 					<span class="rounded-full border border-ink-950/10 bg-white px-4 py-2 font-medium">{league}</span>
 				{/each}
 			</div>
@@ -93,11 +94,28 @@ const planCards = [
 		</div>
 	</section>
 
+	<section class="mt-8 rounded-[1.75rem] border border-ink-950/10 bg-white/82 p-7 shadow-[0_24px_80px_-56px_rgba(8,23,17,0.6)] backdrop-blur">
+		<p class="text-sm uppercase tracking-[0.28em] text-field-500">Persona lineup</p>
+		<div class="mt-5 grid gap-4 md:grid-cols-3">
+			{#each sportsPersonas as persona (persona.slug)}
+				<div class="rounded-2xl border border-ink-950/8 bg-cream-100/80 p-5">
+					<div class="flex items-center justify-between gap-3">
+						<p class="font-semibold text-ink-950">{persona.name}</p>
+						<span class="rounded-full border border-ink-950/10 bg-white px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-ink-700">
+							{persona.slug}
+						</span>
+					</div>
+					<p class="mt-3 text-sm leading-7 text-ink-700">{persona.tagline}</p>
+				</div>
+			{/each}
+		</div>
+	</section>
+
 	<section class="mt-8 grid gap-6 lg:grid-cols-[1fr_1fr]">
 		<div class="rounded-[1.75rem] border border-dashed border-ink-950/15 bg-white/70 p-7 backdrop-blur">
 			<p class="font-display text-2xl text-ink-950">Starter prompts</p>
 			<div class="mt-4 grid gap-3">
-				{#each defaultConversationStarters as starter}
+				{#each defaultConversationStarters as starter (starter)}
 					<div class="rounded-2xl border border-ink-950/8 bg-white px-4 py-4 text-sm leading-7 text-ink-700">
 						{starter}
 					</div>
@@ -108,7 +126,7 @@ const planCards = [
 		<div class="rounded-[1.75rem] border border-ink-950/10 bg-white/76 p-7 shadow-[0_24px_80px_-56px_rgba(8,23,17,0.6)] backdrop-blur">
 			<p class="font-display text-2xl text-ink-950">Monetization posture</p>
 			<div class="mt-4 grid gap-4 md:grid-cols-3">
-				{#each planCards as plan}
+				{#each planCards as plan (plan.name)}
 					<div class="rounded-2xl bg-cream-100/80 p-5">
 						<p class="font-semibold text-ink-950">{plan.name}</p>
 						<p class="mt-2 text-sm leading-7 text-ink-700">{plan.detail}</p>

@@ -1,5 +1,5 @@
 import { buildLocalReply, chunkTextForStreaming } from '$lib/server/chat-helpers'
-import { createLarryTextStream } from '$lib/server/chat-model'
+import { createChatTextStream } from '$lib/server/chat-model'
 import {
 	finishAssistantTurn,
 	recordModelProviderEvent,
@@ -11,6 +11,7 @@ import type { RequestHandler } from './$types'
 
 type ChatRequest = {
 	conversationSlug?: string | null
+	personaSlug?: string | null
 	prompt?: string
 }
 
@@ -71,6 +72,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
 	const startedTurn = await startConversationTurn({
 		conversationSlug: body.conversationSlug,
+		personaSlug: body.personaSlug,
 		prompt,
 		userId,
 	})
@@ -120,6 +122,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 					const fallbackReply = buildLocalReply({
 						favoriteTeam: startedTurn.favoriteTeam,
 						historyCount: startedTurn.historyMessages.length,
+						personaSlug: startedTurn.personaSlug,
 						prompt,
 					})
 
@@ -152,7 +155,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 				let responseText = ''
 				let usage: unknown
 
-				const chatStream = createLarryTextStream({
+				const chatStream = createChatTextStream({
 					favoriteTeam: startedTurn.favoriteTeam,
 					messages: startedTurn.historyMessages,
 					onFinish: async (event) => {
@@ -160,6 +163,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 						providerMetadata = event.providerMetadata
 						usage = event.usage
 					},
+					personaSlug: startedTurn.personaSlug,
 					searchContext: searchContext?.promptContext,
 				})
 
@@ -215,6 +219,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 				const fallbackReply = buildLocalReply({
 					favoriteTeam: startedTurn.favoriteTeam,
 					historyCount: startedTurn.historyMessages.length,
+					personaSlug: startedTurn.personaSlug,
 					prompt,
 				})
 

@@ -1,4 +1,4 @@
-import { createSystemPrompt } from '@larry/ai'
+import { createSystemPrompt, sportsPersonas } from '@larry/ai'
 import { createDb } from './client'
 import { personaProfile, plan } from './schema/index'
 
@@ -57,16 +57,16 @@ await db
 
 await db
 	.insert(personaProfile)
-	.values([
-		{
-			id: 'larry-prime',
-			slug: 'larry-prime',
-			name: 'Larry Prime',
-			systemPrompt: createSystemPrompt(),
-			temperatureTenth: 8,
-			isDefault: true,
-		},
-	])
+	.values(
+		sportsPersonas.map((persona) => ({
+			id: persona.id,
+			isDefault: persona.slug === 'larry',
+			name: persona.name,
+			slug: persona.slug,
+			systemPrompt: createSystemPrompt({ persona: persona.slug }),
+			temperatureTenth: persona.slug === 'vega' ? 6 : persona.slug === 'scout' ? 7 : 8,
+		}))
+	)
 	.onConflictDoNothing()
 
-console.log('Seeded plans and default persona profile')
+console.log('Seeded plans and persona profiles')

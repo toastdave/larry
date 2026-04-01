@@ -1,5 +1,5 @@
 import { createOpenAI } from '@ai-sdk/openai'
-import { createSystemPrompt } from '@larry/ai'
+import { type SportsPersonaSlug, createSystemPrompt } from '@larry/ai'
 import { type ModelMessage, streamText } from 'ai'
 import type { StoredMessage } from './chat-store'
 
@@ -53,7 +53,7 @@ export function buildModelMessages(messages: StoredMessage[]) {
 	})
 }
 
-export function createLarryTextStream(input: {
+export function createChatTextStream(input: {
 	favoriteTeam?: string | null
 	messages: StoredMessage[]
 	onFinish?: (event: {
@@ -61,6 +61,7 @@ export function createLarryTextStream(input: {
 		providerMetadata?: unknown
 		usage?: unknown
 	}) => Promise<void> | void
+	personaSlug?: SportsPersonaSlug | string | null
 	searchContext?: string | null
 }) {
 	const route = resolveChatProviderRoute()
@@ -84,7 +85,10 @@ export function createLarryTextStream(input: {
 				usage: event.totalUsage,
 			})
 		},
-		system: [createSystemPrompt({ favoriteTeam: input.favoriteTeam }), input.searchContext]
+		system: [
+			createSystemPrompt({ favoriteTeam: input.favoriteTeam, persona: input.personaSlug }),
+			input.searchContext,
+		]
 			.filter(Boolean)
 			.join(' '),
 		temperature: 0.8,

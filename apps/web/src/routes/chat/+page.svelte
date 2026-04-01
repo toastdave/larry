@@ -1,10 +1,18 @@
 <script lang="ts">
 import { goto } from '$app/navigation'
-import { defaultConversationStarters, starterTranscript } from '@larry/ai'
+import {
+	type SportsPersona,
+	type SportsPersonaSlug,
+	defaultPersonaSlug,
+	getConversationStarters,
+	getPersonaBySlug,
+	getStarterTranscript,
+	sportsPersonas,
+} from '@larry/ai'
 import { inferLeague, requiresFreshSearch } from '@larry/search'
 import type { PageData } from './$types'
 
-const { data } = $props<{ data: PageData }>()
+const { data }: { data: PageData } = $props()
 type ConversationEntry = NonNullable<PageData['activeConversation']>
 type ChatMessage = PageData['messages'][number]
 
@@ -14,22 +22,32 @@ let conversations = $state<PageData['conversations']>([])
 let errorMessage = $state('')
 let isSending = $state(false)
 let messages = $state<PageData['messages']>([])
+let selectedPersonaSlug = $state<SportsPersonaSlug>(defaultPersonaSlug)
 
-const sampleSignals = [
-	'Auto-search live scores, standings, odds, injuries, and trades',
-	'Show citations when Larry uses fresh facts',
-	'Track search and inference usage for hybrid billing later',
-]
-
+const currentPersona = $derived(
+	getPersonaBySlug(activeConversation?.personaSlug ?? selectedPersonaSlug)
+)
 const derivedLeague = $derived(inferLeague(draft))
-const promptSuggestions = defaultConversationStarters
+const promptSuggestions = $derived(getConversationStarters(currentPersona.slug))
 const shouldSearch = $derived(requiresFreshSearch(draft))
+const starterTranscript = $derived(getStarterTranscript(currentPersona.slug))
 
 $effect(() => {
 	activeConversation = data.activeConversation
 	conversations = data.conversations
 	messages = data.messages
+	selectedPersonaSlug = getPersonaBySlug(
+		data.activeConversation?.personaSlug ?? data.initialPersonaSlug ?? defaultPersonaSlug
+	).slug
 })
+
+function buildSampleSignals(persona: SportsPersona) {
+	return [
+		`${persona.name} changes the voice while the live-data rules stay strict.`,
+		'Auto-search live scores, standings, odds, injuries, and trades.',
+		`${persona.name} cites fresh facts when the provider comes through.`,
+	]
+}
 
 function formatUpdatedAt(value: string | Date | null | undefined) {
 	if (!value) {
@@ -42,6 +60,14 @@ function formatUpdatedAt(value: string | Date | null | undefined) {
 	}).format(new Date(value))
 }
 
+function getPersonaDetails(personaSlug: string | null | undefined) {
+	return getPersonaBySlug(personaSlug)
+}
+
+function getMessageLabel(message: ChatMessage) {
+	return message.role === 'assistant' ? currentPersona.name : 'You'
+}
+
 function upsertConversation(nextConversation: ConversationEntry) {
 	conversations = [
 		nextConversation,
@@ -50,6 +76,7 @@ function upsertConversation(nextConversation: ConversationEntry) {
 		),
 	]
 	activeConversation = nextConversation
+	selectedPersonaSlug = getPersonaBySlug(nextConversation.personaSlug).slug
 }
 
 function resetComposer(nextDraft = '') {
@@ -57,8 +84,27 @@ function resetComposer(nextDraft = '') {
 	errorMessage = ''
 }
 
+async function startFreshWithPersona(personaSlug: SportsPersonaSlug) {
+	if (isSending) {
+		return
+	}
+
+	if (!activeConversation && messages.length === 0) {
+		selectedPersonaSlug = personaSlug
+		return
+	}
+
+	await goto(`/chat?new=1&persona=${personaSlug}`, {
+		invalidateAll: true,
+		keepFocus: true,
+		noScroll: true,
+	})
+}
+
 async function sendPrompt(promptOverride?: string) {
 	const prompt = (promptOverride ?? draft).trim()
+	const personaSlug = activeConversation?.personaSlug ?? selectedPersonaSlug
+	const persona = getPersonaBySlug(personaSlug)
 
 	if (!prompt || isSending) {
 		return
@@ -92,6 +138,7 @@ async function sendPrompt(promptOverride?: string) {
 		const response = await fetch('/api/chat', {
 			body: JSON.stringify({
 				conversationSlug: activeConversation?.slug ?? null,
+				personaSlug,
 				prompt,
 			}),
 			headers: {
@@ -101,7 +148,7 @@ async function sendPrompt(promptOverride?: string) {
 		})
 
 		if (!response.ok || !response.body) {
-			throw new Error('Unable to get a response from Larry right now.')
+			throw new Error(`Unable to get a response from ${persona.name} right now.`)
 		}
 
 		const reader = response.body.getReader()
@@ -181,7 +228,7 @@ async function sendPrompt(promptOverride?: string) {
 	} catch (error) {
 		messages = messages.slice(0, -2)
 		errorMessage =
-			error instanceof Error ? error.message : 'Larry spilled the wings and missed the take.'
+			error instanceof Error ? error.message : `${persona.name} lost the thread on that one.`
 		draft = prompt
 	} finally {
 		isSending = false
@@ -206,39 +253,113 @@ function handleSubmit(event: SubmitEvent) {
 <section class="mx-auto max-w-7xl px-6 py-10 sm:px-8 lg:px-10">
 	<div class="grid gap-6 xl:grid-cols-[0.7fr_1.3fr]">
 		<div class="space-y-6 rounded-[2rem] border border-white/70 bg-white/76 p-6 shadow-[0_32px_120px_-48px_rgba(8,23,17,0.45)] backdrop-blur">
-			<p class="font-display text-sm uppercase tracking-[0.3em] text-field-500">Chat shell</p>
+			<p class="font-display text-sm uppercase tracking-[0.3em] text-field-500">Multi-persona chat</p>
 			<h1 class="mt-4 font-display text-4xl leading-none text-ink-950">
-				Ready for game-day chaos, {data.user.name}.
+				Pick the voice, keep the receipts, {data.user.name}.
 			</h1>
 			<p class="mt-4 text-sm leading-7 text-ink-700">
-				Conversations now persist, history is saved, and Larry answers through the AI SDK with
-				environment-based provider routing. Live sports questions now trigger retrieval before the
-				answer lands, and citation rendering is live in the transcript.
+				Larry brings the barstool energy, Scout brings the scouting report, and Vega
+				tracks the market without faking stale odds. Every conversation keeps its own
+				persona, history, and live-data expectations.
 			</p>
 
 			<ul class="mt-6 space-y-3 text-sm leading-7 text-ink-700">
-				{#each sampleSignals as signal}
+				{#each buildSampleSignals(currentPersona) as signal (signal)}
 					<li>{signal}</li>
 				{/each}
 			</ul>
 
 			<div class="rounded-[1.5rem] border border-ink-950/10 bg-white/85 p-4">
 				<div class="flex items-center justify-between gap-3">
-					<p class="text-sm font-semibold text-ink-950">Saved debates</p>
-					<a class="rounded-full border border-ink-950/10 bg-cream-100 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-ink-900" href="/chat">
+					<div>
+						<p class="text-sm font-semibold text-ink-950">Choose the booth</p>
+						<p class="mt-1 text-xs leading-6 text-ink-700">
+							{#if activeConversation}
+								This conversation is locked to {currentPersona.name}. Switching personas starts a
+								fresh thread.
+							{:else}
+								Your next conversation will start with {currentPersona.name}.
+							{/if}
+						</p>
+					</div>
+					<a
+						class="rounded-full border border-ink-950/10 bg-cream-100 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-ink-900"
+						href={`/chat?new=1&persona=${currentPersona.slug}`}
+					>
 						New chat
+					</a>
+				</div>
+
+				<div class="mt-4 grid gap-3">
+					{#each sportsPersonas as persona (persona.slug)}
+						<button
+							class={`rounded-[1.35rem] border px-4 py-4 text-left transition ${currentPersona.slug === persona.slug ? 'border-ink-950 bg-ink-950 text-cream-100' : 'border-ink-950/10 bg-cream-100/80 text-ink-900 hover:border-redline-500/40 hover:bg-white'}`}
+							onclick={() => void startFreshWithPersona(persona.slug)}
+							type="button"
+						>
+							<div class="flex items-center justify-between gap-3">
+								<p class="font-semibold">{persona.name}</p>
+								<span
+									class={`rounded-full px-2.5 py-1 text-[10px] uppercase tracking-[0.24em] ${currentPersona.slug === persona.slug ? 'bg-white/10 text-cream-100/80' : 'bg-white text-ink-700'}`}
+								>
+									{persona.slug}
+								</span>
+							</div>
+							<p class={`mt-2 text-sm leading-6 ${currentPersona.slug === persona.slug ? 'text-cream-100/80' : 'text-ink-700'}`}>
+								{persona.tagline}
+							</p>
+						</button>
+					{/each}
+				</div>
+			</div>
+
+			<div class="rounded-[1.5rem] border border-ink-950/10 bg-cream-100/85 p-4">
+				<div class="flex items-center justify-between gap-3">
+					<div>
+						<p class="text-xs uppercase tracking-[0.24em] text-ink-700/70">Current persona</p>
+						<p class="mt-2 text-lg font-semibold text-ink-950">{currentPersona.name}</p>
+					</div>
+					<span class="rounded-full border border-ink-950/10 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-ink-700">
+						{currentPersona.slug}
+					</span>
+				</div>
+				<p class="mt-3 text-sm leading-7 text-ink-700">{currentPersona.description}</p>
+				<p class="mt-4 text-sm text-ink-950">League guess: {derivedLeague ?? 'Unknown'}</p>
+				<p class="mt-2 text-sm text-ink-950">Fresh search needed: {shouldSearch ? 'Yes' : 'Probably not'}</p>
+			</div>
+
+			<div class="rounded-[1.5rem] border border-ink-950/10 bg-white/85 p-4">
+				<div class="flex items-center justify-between gap-3">
+					<p class="text-sm font-semibold text-ink-950">Saved debates</p>
+					<a
+						class="rounded-full border border-ink-950/10 bg-cream-100 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-ink-900"
+						href={`/chat?new=1&persona=${currentPersona.slug}`}
+					>
+						Fresh thread
 					</a>
 				</div>
 
 				{#if conversations.length === 0}
 					<p class="mt-4 text-sm leading-7 text-ink-700">
-						No saved debates yet. Fire the opening take and Larry will start keeping score.
+						No saved debates yet. Pick a booth, fire the opening take, and the transcript will
+						start keeping score.
 					</p>
 				{:else}
 					<div class="mt-4 space-y-3">
-						{#each conversations as conversation}
-							<a class={`block rounded-2xl border px-4 py-3 text-sm transition ${activeConversation?.id === conversation.id ? 'border-ink-950 bg-ink-950 text-cream-100' : 'border-ink-950/10 bg-cream-100/75 text-ink-900 hover:border-redline-500/40 hover:bg-white'}`} href={`/chat?conversation=${conversation.slug}`}>
-								<p class="font-semibold">{conversation.title}</p>
+						{#each conversations as conversation (conversation.id)}
+							{@const persona = getPersonaDetails(conversation.personaSlug)}
+							<a
+								class={`block rounded-2xl border px-4 py-3 text-sm transition ${activeConversation?.id === conversation.id ? 'border-ink-950 bg-ink-950 text-cream-100' : 'border-ink-950/10 bg-cream-100/75 text-ink-900 hover:border-redline-500/40 hover:bg-white'}`}
+								href={`/chat?conversation=${conversation.slug}`}
+							>
+								<div class="flex items-start justify-between gap-3">
+									<p class="font-semibold">{conversation.title}</p>
+									<span
+										class={`rounded-full px-2.5 py-1 text-[10px] uppercase tracking-[0.24em] ${activeConversation?.id === conversation.id ? 'bg-white/10 text-cream-100/80' : 'bg-white text-ink-700'}`}
+									>
+										{persona.name}
+									</span>
+								</div>
 								<p class={`mt-2 text-xs ${activeConversation?.id === conversation.id ? 'text-cream-100/70' : 'text-ink-700/70'}`}>
 									Updated {formatUpdatedAt(conversation.updatedAt)}
 								</p>
@@ -247,28 +368,36 @@ function handleSubmit(event: SubmitEvent) {
 					</div>
 				{/if}
 			</div>
-
-			<div class="mt-6 rounded-2xl bg-cream-100/85 p-4">
-				<p class="text-xs uppercase tracking-[0.24em] text-ink-700/70">Draft analysis</p>
-				<p class="mt-3 text-sm text-ink-950">League guess: {derivedLeague ?? 'Unknown'}</p>
-				<p class="mt-2 text-sm text-ink-950">Fresh search needed: {shouldSearch ? 'Yes' : 'Probably not'}</p>
-			</div>
 		</div>
 
 		<div class="rounded-[2rem] border border-ink-950/10 bg-white/84 p-6 shadow-[0_24px_90px_-54px_rgba(8,23,17,0.55)] backdrop-blur">
-			<div class="space-y-4">
+			<div class="flex flex-wrap items-center justify-between gap-3 border-b border-ink-950/10 pb-5">
+				<div>
+					<p class="text-xs uppercase tracking-[0.24em] text-ink-700/70">Active booth</p>
+					<h2 class="mt-2 font-display text-3xl text-ink-950">{currentPersona.name}</h2>
+					<p class="mt-2 max-w-2xl text-sm leading-7 text-ink-700">{currentPersona.tagline}</p>
+				</div>
+				<a
+					class="rounded-full border border-ink-950/10 bg-cream-100 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-ink-900"
+					href={`/chat?new=1&persona=${currentPersona.slug}`}
+				>
+					Start fresh
+				</a>
+			</div>
+
+			<div class="space-y-4 pt-5">
 				{#if messages.length > 0}
-					{#each messages as message, index}
+					{#each messages as message, index (message.id)}
 						<div class={`max-w-3xl rounded-[1.5rem] px-5 py-4 text-sm leading-7 ${message.role === 'user' ? 'ml-auto bg-ink-950 text-cream-100' : 'border border-ink-950/10 bg-cream-100/80 text-ink-900'}`}>
 							<p class="text-xs uppercase tracking-[0.24em] opacity-70">
-								{message.role} · {formatUpdatedAt(message.createdAt)}
+								{getMessageLabel(message)} · {formatUpdatedAt(message.createdAt)}
 							</p>
 							<p class="mt-2 whitespace-pre-wrap">{message.contentText}</p>
 							{#if message.role === 'assistant' && message.citations.length > 0}
 								<div class="mt-4 rounded-2xl border border-ink-950/10 bg-white/65 p-4 text-xs text-ink-700">
 									<p class="uppercase tracking-[0.24em] text-ink-700/65">Citations</p>
 									<div class="mt-3 flex flex-wrap gap-2">
-										{#each message.citations as citation}
+										{#each message.citations as citation (citation.id)}
 											<a class="rounded-full border border-ink-950/10 bg-cream-100 px-3 py-2 transition hover:border-redline-500/40 hover:bg-white" href={citation.url} rel="noreferrer" target="_blank">
 												{citation.label}
 											</a>
@@ -277,22 +406,30 @@ function handleSubmit(event: SubmitEvent) {
 								</div>
 							{/if}
 							{#if index === messages.length - 1 && isSending && message.role === 'assistant'}
-								<p class="mt-3 text-xs uppercase tracking-[0.22em] opacity-60">Larry is cooking...</p>
+								<p class="mt-3 text-xs uppercase tracking-[0.22em] opacity-60">
+									{currentPersona.loadingMessage}
+								</p>
 							{/if}
 						</div>
 					{/each}
 				{:else}
-					{#each starterTranscript as turn, index}
+					{#each starterTranscript as turn, index (`${turn.role}-${turn.content}`)}
 						<div class={`max-w-3xl rounded-[1.5rem] px-5 py-4 text-sm leading-7 ${index % 2 === 0 ? 'ml-auto bg-ink-950 text-cream-100' : 'border border-ink-950/10 bg-cream-100/80 text-ink-900'}`}>
-							<p class="text-xs uppercase tracking-[0.24em] opacity-70">{turn.role}</p>
-							<p class="mt-2">{turn.content}</p>
+							<p class="text-xs uppercase tracking-[0.24em] opacity-70">
+								{turn.role === 'assistant' ? currentPersona.name : 'You'}
+							</p>
+							<p class="mt-2 whitespace-pre-wrap">{turn.content}</p>
 						</div>
 					{/each}
 
 					<div class="rounded-[1.5rem] border border-dashed border-ink-950/15 bg-white/80 p-5">
 						<p class="text-sm font-semibold text-ink-950">Jump-start the first debate</p>
+						<p class="mt-2 text-sm leading-7 text-ink-700">
+							Start with {currentPersona.name} and let the conversation keep that voice all the
+							way through the thread.
+						</p>
 						<div class="mt-4 flex flex-wrap gap-3">
-							{#each promptSuggestions as prompt}
+							{#each promptSuggestions as prompt (prompt)}
 								<button class="rounded-full border border-ink-950/10 bg-cream-100 px-4 py-2 text-left text-sm text-ink-900 transition hover:border-redline-500/40 hover:bg-white" onclick={() => usePromptSuggestion(prompt)} type="button">
 									{prompt}
 								</button>
@@ -303,7 +440,9 @@ function handleSubmit(event: SubmitEvent) {
 			</div>
 
 			<form class="mt-8 rounded-[1.5rem] border border-ink-950/10 bg-white p-4" onsubmit={handleSubmit}>
-				<label class="text-xs uppercase tracking-[0.24em] text-ink-700/70" for="draft">Try a prompt</label>
+				<label class="text-xs uppercase tracking-[0.24em] text-ink-700/70" for="draft">
+					Try a prompt for {currentPersona.name}
+				</label>
 				<textarea bind:value={draft} class="mt-3 min-h-28 w-full rounded-2xl border border-ink-950/10 bg-cream-100/45 px-4 py-3 text-sm text-ink-950 outline-none transition focus:border-redline-500" id="draft"></textarea>
 
 				{#if errorMessage}
@@ -315,11 +454,11 @@ function handleSubmit(event: SubmitEvent) {
 				<div class="mt-4 flex flex-wrap items-center justify-between gap-3">
 					<p class="text-sm text-ink-700">
 						{shouldSearch
-							? 'This prompt wants live data, so Larry will search first and attach sources when the provider comes through.'
-							: 'Larry can answer this now, and the live retrieval layer stays on standby unless the question needs it.'}
+							? `This prompt wants live data, so ${currentPersona.name} will search first and attach sources when the provider comes through.`
+							: `${currentPersona.name} can answer this now, and the live retrieval layer stays on standby unless the question needs it.`}
 					</p>
 					<button class="rounded-full bg-ink-950 px-5 py-3 text-sm font-semibold text-cream-100 disabled:cursor-not-allowed disabled:opacity-70" disabled={isSending || !draft.trim()} type="submit">
-						{isSending ? 'Sending...' : 'Send'}
+						{isSending ? 'Sending...' : `Send to ${currentPersona.name}`}
 					</button>
 				</div>
 			</form>

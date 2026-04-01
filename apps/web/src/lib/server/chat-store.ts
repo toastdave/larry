@@ -1,4 +1,5 @@
 import { db } from '$lib/server/db'
+import { type SportsPersonaSlug, getPersonaBySlug } from '@larry/ai'
 import {
 	citation,
 	conversation,
@@ -27,6 +28,7 @@ export type ConversationSummary = {
 	createdAt: Date
 	id: string
 	lastMessageAt: Date | null
+	personaSlug: SportsPersonaSlug
 	slug: string
 	title: string
 	updatedAt: Date
@@ -54,6 +56,7 @@ export type StartedConversationTurn = {
 	conversation: ConversationSummary
 	favoriteTeam: string | null
 	historyMessages: StoredMessage[]
+	personaSlug: SportsPersonaSlug
 	userMessage: StoredMessage
 }
 
@@ -67,24 +70,61 @@ type AssistantMetadata = {
 	usage?: unknown
 }
 
+const conversationSummaryColumns = {
+	createdAt: conversation.createdAt,
+	id: conversation.id,
+	lastMessageAt: conversation.lastMessageAt,
+	personaSlug: conversation.personaSlug,
+	slug: conversation.slug,
+	title: conversation.title,
+	updatedAt: conversation.updatedAt,
+}
+
+function normalizePersonaSlug(persona: string | null | undefined): SportsPersonaSlug {
+	return getPersonaBySlug(persona).slug
+}
+
+function toConversationSummary(entry: {
+	createdAt: Date
+	id: string
+	lastMessageAt: Date | null
+	personaSlug: string
+	slug: string
+	title: string
+	updatedAt: Date
+}): ConversationSummary {
+	return {
+		...entry,
+		personaSlug: normalizePersonaSlug(entry.personaSlug),
+	}
+}
+
 export async function listConversationsForUser(userId: string) {
-	return db
-		.select({
-			createdAt: conversation.createdAt,
-			id: conversation.id,
-			lastMessageAt: conversation.lastMessageAt,
-			slug: conversation.slug,
-			title: conversation.title,
-			updatedAt: conversation.updatedAt,
-		})
+	const conversations = await db
+		.select(conversationSummaryColumns)
 		.from(conversation)
 		.where(eq(conversation.ownerUserId, userId))
 		.orderBy(desc(conversation.updatedAt))
 		.limit(24)
+
+	return conversations.map(toConversationSummary)
 }
 
-export async function loadConversationForUser(userId: string, slug: string | null | undefined) {
+export async function loadConversationForUser(
+	userId: string,
+	slug: string | null | undefined,
+	options?: { emptyState?: boolean }
+) {
 	const conversations = await listConversationsForUser(userId)
+
+	if (options?.emptyState) {
+		return {
+			activeConversation: null,
+			conversations,
+			messages: [] as StoredMessage[],
+		}
+	}
+
 	const activeConversation = slug
 		? (conversations.find((entry) => entry.slug === slug) ?? conversations[0] ?? null)
 		: (conversations[0] ?? null)
@@ -173,25 +213,33 @@ async function getFavoriteTeam(userId: string) {
 	return favoriteTeam?.teamName ?? null
 }
 
-async function createConversationForUser(userId: string, prompt: string) {
+async function findConversationForUser(userId: string, slug: string) {
+	const [existingConversation] = await db
+		.select(conversationSummaryColumns)
+		.from(conversation)
+		.where(and(eq(conversation.ownerUserId, userId), eq(conversation.slug, slug)))
+		.limit(1)
+
+	return existingConversation ? toConversationSummary(existingConversation) : null
+}
+
+async function createConversationForUser(
+	userId: string,
+	prompt: string,
+	personaSlug: SportsPersonaSlug
+) {
 	const [createdConversation] = await db
 		.insert(conversation)
 		.values({
 			ownerUserId: userId,
+			personaSlug,
 			slug: buildConversationSlug(prompt),
 			title: buildConversationTitle(prompt),
 			updatedAt: new Date(),
 		})
-		.returning({
-			createdAt: conversation.createdAt,
-			id: conversation.id,
-			lastMessageAt: conversation.lastMessageAt,
-			slug: conversation.slug,
-			title: conversation.title,
-			updatedAt: conversation.updatedAt,
-		})
+		.returning(conversationSummaryColumns)
 
-	return createdConversation
+	return toConversationSummary(createdConversation)
 }
 
 async function insertMessageRecord(input: {
@@ -241,20 +289,14 @@ async function touchConversation(conversationId: string) {
 			updatedAt: now,
 		})
 		.where(eq(conversation.id, conversationId))
-		.returning({
-			createdAt: conversation.createdAt,
-			id: conversation.id,
-			lastMessageAt: conversation.lastMessageAt,
-			slug: conversation.slug,
-			title: conversation.title,
-			updatedAt: conversation.updatedAt,
-		})
+		.returning(conversationSummaryColumns)
 
-	return updatedConversation
+	return toConversationSummary(updatedConversation)
 }
 
 export async function startConversationTurn(input: {
 	conversationSlug?: string | null
+	personaSlug?: string | null
 	prompt: string
 	userId: string
 }) {
@@ -265,16 +307,12 @@ export async function startConversationTurn(input: {
 	}
 
 	const existingConversation = input.conversationSlug
-		? await db.query.conversation.findFirst({
-				where: and(
-					eq(conversation.ownerUserId, input.userId),
-					eq(conversation.slug, input.conversationSlug)
-				),
-			})
+		? await findConversationForUser(input.userId, input.conversationSlug)
 		: null
+	const personaSlug = existingConversation?.personaSlug ?? normalizePersonaSlug(input.personaSlug)
 
 	const activeConversation =
-		existingConversation ?? (await createConversationForUser(input.userId, prompt))
+		existingConversation ?? (await createConversationForUser(input.userId, prompt, personaSlug))
 
 	const userMessage = await insertMessageRecord({
 		contentText: prompt,
@@ -292,6 +330,7 @@ export async function startConversationTurn(input: {
 		conversation: activeConversation,
 		favoriteTeam,
 		historyMessages,
+		personaSlug,
 		userMessage,
 	} satisfies StartedConversationTurn
 }
