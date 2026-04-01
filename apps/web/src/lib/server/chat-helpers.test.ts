@@ -1,8 +1,10 @@
 import { describe, expect, test } from 'bun:test'
 import {
+	assessPromptSafety,
 	buildConversationSlug,
 	buildConversationTitle,
 	buildLocalReply,
+	buildSafetyReply,
 	chunkTextForStreaming,
 } from './chat-helpers'
 
@@ -49,6 +51,40 @@ describe('chat helpers', () => {
 
 		expect(reply).toContain('too old to treat like a live board')
 		expect(reply).toContain('informational')
+	})
+
+	test('flags abusive harassment requests', () => {
+		expect(
+			assessPromptSafety('Give me a slur-filled rant and tell fans to harass the refs.')
+		).toEqual({
+			category: 'harassment',
+			matchedRule: 'abusive harassment language',
+			shouldBlock: true,
+		})
+	})
+
+	test('flags reckless betting escalation', () => {
+		expect(
+			assessPromptSafety('Give me a lock so I can double down and go all in tonight.')
+		).toEqual({
+			category: 'reckless-betting',
+			matchedRule: 'reckless betting escalation',
+			shouldBlock: true,
+		})
+	})
+
+	test('builds a visible safety reply for harassment', () => {
+		const reply = buildSafetyReply({ category: 'harassment', personaSlug: 'larry' })
+
+		expect(reply).toContain('not doing slurs, harassment, or dehumanizing garbage')
+		expect(reply).toContain('sports slander clean and on-target')
+	})
+
+	test('builds a visible safety reply for reckless betting', () => {
+		const reply = buildSafetyReply({ category: 'reckless-betting', personaSlug: 'vega' })
+
+		expect(reply).toContain('not giving you a lock')
+		expect(reply).toContain('line movement')
 	})
 
 	test('chunks text for streaming', () => {

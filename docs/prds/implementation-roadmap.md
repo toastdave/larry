@@ -38,8 +38,8 @@ Status: functionally complete for the MVP, with ranked retrieval, structured odd
 
 Status: partially started.
 
-- Completed: base Larry persona prompt, seeded persona profile, billing schema, seeded plans, usage-ledger writes for search/inference, runtime persona selection, conversation persona persistence, persona-aware chat UX, account-driven favorite/rival team context in the live prompt path, stronger Vega betting-adjacent guardrails, shared abuse-edge prompt guidance, and persona eval cases for regression coverage
-- Remaining: broader abuse-edge response handling in the product UI and automated eval execution
+- Completed: base Larry persona prompt, seeded persona profile, billing schema, seeded plans, usage-ledger writes for search/inference, runtime persona selection, conversation persona persistence, persona-aware chat UX, account-driven favorite/rival team context in the live prompt path, stronger Vega betting-adjacent guardrails, shared abuse-edge prompt guidance, persona eval cases for regression coverage, and product-level safe-response handling for abusive and reckless prompts
+- Remaining: automated eval execution and any extra UI affordances beyond the in-thread guardrail reply
 
 ## Phase 5 - Billing, Packaging, And Growth
 

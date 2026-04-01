@@ -26,7 +26,8 @@ Turn Larry into a multi-persona sports AI app with distinct voices that feel int
 - Completed: Scout retrieval now ranks structured evidence ahead of looser narrative coverage when both are available
 - Completed: shared prompt guardrails now redirect abusive sports talk and reckless betting requests toward safer, analysis-first answers
 - Completed: persona eval cases now exist in code for style, evidence, and gambling-safety regression coverage
-- Remaining: broader abuse-edge response handling in the product UI and automated eval execution
+- Completed: chat now short-circuits abusive, violent, self-harm, and reckless-betting prompts into explicit safe-response flows before model generation
+- Remaining: automated eval execution and any future UI affordances beyond the in-thread safety reply
 
 ## Requirements
 

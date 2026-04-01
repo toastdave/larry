@@ -23,6 +23,48 @@ type ReplyOptions = {
 	rivalTeam?: string | null
 }
 
+export type PromptSafetyCategory =
+	| 'harassment'
+	| 'reckless-betting'
+	| 'self-harm'
+	| 'violence-or-illegal'
+
+export type PromptSafetyAssessment = {
+	category: PromptSafetyCategory
+	matchedRule: string
+	shouldBlock: true
+}
+
+const promptSafetyRules: Array<{
+	category: PromptSafetyCategory
+	pattern: RegExp
+	rule: string
+}> = [
+	{
+		category: 'self-harm',
+		pattern: /\b(kill myself|hurt myself|end my life|suicide|self-harm)\b/i,
+		rule: 'self-harm language',
+	},
+	{
+		category: 'violence-or-illegal',
+		pattern:
+			/\b(kill him|kill her|beat (him|her|them) up|attack (him|her|them)|send death threats|doxx|swat|hack|bribe (the )?(ref|official)|fix (the )?game)\b/i,
+		rule: 'violent or illegal request',
+	},
+	{
+		category: 'harassment',
+		pattern:
+			/\b(slur|dehumaniz(e|ing)|harass|harassment|bully|humiliat(e|ing)|tell fans to go after|make their life miserable)\b/i,
+		rule: 'abusive harassment language',
+	},
+	{
+		category: 'reckless-betting',
+		pattern:
+			/\b(lock|sure thing|guaranteed win|can't lose|all in|all-in|double down|chase losses|max bet|mortgage payment|rent money|life savings|empty the account)\b/i,
+		rule: 'reckless betting escalation',
+	},
+]
+
 function normalizeWhitespace(value: string) {
 	return value.replace(/\s+/g, ' ').trim()
 }
@@ -65,6 +107,44 @@ export function chunkTextForStreaming(text: string) {
 	}
 
 	return chunks.length > 0 ? chunks : [text]
+}
+
+export function assessPromptSafety(prompt: string): PromptSafetyAssessment | null {
+	for (const rule of promptSafetyRules) {
+		if (rule.pattern.test(prompt)) {
+			return {
+				category: rule.category,
+				matchedRule: rule.rule,
+				shouldBlock: true,
+			}
+		}
+	}
+
+	return null
+}
+
+export function buildSafetyReply(input: {
+	category: PromptSafetyCategory
+	personaSlug?: SportsPersonaSlug | string | null
+}) {
+	const persona = getPersonaBySlug(input.personaSlug)
+
+	switch (input.category) {
+		case 'harassment':
+			return persona.slug === 'scout'
+				? 'I can break down a collapse, bad coaching, or a fraud performance, but I am not helping with slurs, harassment, or dehumanizing people. If you want the clean version, I will keep it to basketball and torch the tape instead of the human.'
+				: persona.slug === 'vega'
+					? 'I can talk bad process, bad form, and bad market reads all day, but I am not doing slurs, harassment, or dehumanizing shots at people. If you want, I will keep it to the matchup, the mistakes, and the evidence.'
+					: 'I can roast a team, coach, or playoff choke job without turning it hateful. I am not doing slurs, harassment, or dehumanizing garbage, but I will absolutely keep the sports slander clean and on-target.'
+		case 'reckless-betting':
+			return persona.slug === 'vega'
+				? 'I am not giving you a lock, a chase-losses plan, or an all-in speech. What I can do is keep this responsible: look at injuries, line movement, and uncertainty, then decide whether the price is even worth a second look.'
+				: 'I am not helping with lock talk, chase-losses plans, or reckless bankroll advice. If you want, I can still break down the matchup, the injuries, and what would need to be true before any price deserves respect.'
+		case 'self-harm':
+			return 'I cannot help with hurting yourself. If this is immediate or you may act on it, call local emergency services now or reach out to a crisis hotline in your area right away. If you want, I can stay with you and help you take the next step to get real support.'
+		case 'violence-or-illegal':
+			return 'I cannot help with violence, threats, doxxing, hacking, fixing games, or illegal retaliation. If you want, I can still help with a safe alternative like analyzing the matchup, reporting bad behavior through the proper channel, or just roasting the sports decision itself.'
+	}
 }
 
 export function buildLocalReply({

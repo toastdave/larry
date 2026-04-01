@@ -1,4 +1,9 @@
-import { buildLocalReply, chunkTextForStreaming } from '$lib/server/chat-helpers'
+import {
+	assessPromptSafety,
+	buildLocalReply,
+	buildSafetyReply,
+	chunkTextForStreaming,
+} from '$lib/server/chat-helpers'
 import { createChatTextStream } from '$lib/server/chat-model'
 import {
 	finishAssistantTurn,
@@ -76,11 +81,12 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		prompt,
 		userId,
 	})
+	const safetyAssessment = assessPromptSafety(prompt)
 
 	let searchContext: Awaited<ReturnType<typeof prepareSearchContext>> | null = null
 	let searchFailureMessage: string | null = null
 
-	if (startedTurn.userMessage.searchRequired) {
+	if (!safetyAssessment && startedTurn.userMessage.searchRequired) {
 		try {
 			searchContext = await prepareSearchContext({
 				conversationId: startedTurn.conversation.id,
@@ -116,6 +122,36 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 				return finalPayloadPromise
 			},
 			streamChunks: async function* () {
+				if (safetyAssessment) {
+					const safetyReply = buildSafetyReply({
+						category: safetyAssessment.category,
+						personaSlug: startedTurn.personaSlug,
+					})
+
+					for (const chunk of chunkTextForStreaming(safetyReply)) {
+						yield chunk
+					}
+
+					finalPayloadPromise = finishAssistantTurn({
+						conversationId: startedTurn.conversation.id,
+						metadata: {
+							safetyCategory: safetyAssessment.category,
+							safetyIntervention: true,
+							safetyRule: safetyAssessment.matchedRule,
+						},
+						model: 'larry-safety-guardrail',
+						providerName: 'safety',
+						replyText: safetyReply,
+						userId,
+					}).then((assistantResult) => ({
+						assistantMessage: assistantResult.assistantMessage,
+						conversation: assistantResult.conversation,
+						userMessage: startedTurn.userMessage,
+					}))
+
+					return
+				}
+
 				const shouldForceVegaGuardrailReply =
 					startedTurn.personaSlug === 'vega' &&
 					searchContext?.guardrails.intent === 'odds' &&

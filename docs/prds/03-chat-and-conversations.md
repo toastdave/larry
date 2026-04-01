@@ -21,6 +21,7 @@ Create a sports chat experience that feels conversational, fast, and personality
 - Completed: chat UI includes starter prompts, optimistic updates, history, loading states, and saved transcript rendering
 - Completed: users can start fresh conversations with Larry, Scout, or Vega and keep that persona attached to the thread
 - Completed: assistant answers now support inline numbered citation references alongside transcript source cards
+- Completed: unsafe prompts now return explicit in-thread safety replies instead of silently relying on the model prompt alone
 - Remaining: better auto-title refinement and history search/filtering
 
 ## Requirements
