@@ -1,7 +1,9 @@
 import {
 	type CitationKind,
 	type NormalizedSearchResult,
+	type SearchGuardrailAssessment,
 	type SearchResponse,
+	assessSearchGuardrails,
 	buildSearchPromptContext,
 	formatCitationLabel,
 	inferCitationKind,
@@ -41,6 +43,7 @@ export type PreparedSearchContext = {
 		sourceName: string
 		url: string
 	}>
+	guardrails: SearchGuardrailAssessment
 	promptContext: string | null
 	response: SearchResponse
 }
@@ -48,6 +51,7 @@ export type PreparedSearchContext = {
 export async function prepareSearchContext(input: {
 	conversationId: string
 	messageId: string
+	personaSlug?: string | null
 	prompt: string
 	userId: string
 }) {
@@ -112,11 +116,16 @@ export async function prepareSearchContext(input: {
 			) ?? toFallbackCitation(result)
 		)
 	})
+	const guardrails = assessSearchGuardrails(response.query, response.results)
 
 	await recordModelProviderEvent({
 		payload: {
 			combinedProvider: response.provider,
 			conversationId: input.conversationId,
+			freshnessStatus: guardrails.freshnessStatus,
+			hasInjuryResults: guardrails.hasInjuryResults,
+			hasOddsResults: guardrails.hasOddsResults,
+			intent: guardrails.intent,
 			messageId: input.messageId,
 			queryText: input.prompt,
 			structuredResultCount: sportsDataResponse.results.length,
@@ -129,7 +138,10 @@ export async function prepareSearchContext(input: {
 
 	return {
 		citations,
-		promptContext: buildSearchPromptContext(response),
+		guardrails,
+		promptContext: buildSearchPromptContext(response, {
+			personaSlug: input.personaSlug,
+		}),
 		response,
 	} satisfies PreparedSearchContext
 }

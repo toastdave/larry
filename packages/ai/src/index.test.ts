@@ -35,5 +35,6 @@ describe('ai package', () => {
 
 		expect(prompt).toContain('Vega')
 		expect(prompt).toContain('never present a wager as guaranteed')
+		expect(prompt).toContain('stale, unverified, or unavailable')
 	})
 })

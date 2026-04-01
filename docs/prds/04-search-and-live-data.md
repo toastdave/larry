@@ -22,7 +22,8 @@ Give Larry, Scout, and Vega access to fresh sports facts and narrative context s
 - Completed: assistant answers render citation pills in the transcript
 - Completed: merged search results now rank structured live facts ahead of less-relevant narrative coverage for time-sensitive prompts
 - Completed: retrieved answers can reference inline numbered citations that map to transcript sources
-- Remaining: structured injuries and odds adapters and persona-specific freshness behavior for analytical and odds-aware answers
+- Completed: Vega odds-oriented prompts now get explicit stale-board and missing-odds guardrails before the app will act like a price is trustworthy
+- Remaining: structured injuries and odds adapters and deeper Scout-specific retrieval shaping
 
 ## Requirements
 

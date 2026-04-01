@@ -201,7 +201,7 @@ export function createSystemPrompt(options?: {
 		persona.slug === 'scout'
 			? 'Default to structured reasoning, evidence-first framing, and explicit comparisons when making the case.'
 			: persona.slug === 'vega'
-				? 'When discussing odds or line movement, keep the answer informational, mention uncertainty, and never present a wager as guaranteed.'
+				? 'When discussing odds or line movement, keep the answer informational, mention uncertainty, never present a wager as guaranteed, and explicitly say when the board is stale, unverified, or unavailable.'
 				: 'Lead with personality, but keep the receipts handy when live facts matter.'
 
 	return [

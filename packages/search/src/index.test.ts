@@ -1,9 +1,11 @@
 import { describe, expect, test } from 'bun:test'
 import {
+	assessSearchGuardrails,
 	buildSearchPromptContext,
 	formatCitationLabel,
 	inferCitationKind,
 	inferLeague,
+	inferSearchIntent,
 	mergeSearchResponses,
 	rankSearchResults,
 	requiresFreshSearch,
@@ -19,6 +21,7 @@ describe('search package', () => {
 
 	test('infers leagues and formats citations', () => {
 		expect(inferLeague('Give me the latest on the NFL playoff picture')).toBe('NFL')
+		expect(inferSearchIntent('What is the spread tonight?')).toBe('odds')
 		expect(
 			formatCitationLabel({
 				publishedAt: '2026-03-22T10:00:00.000Z',
@@ -172,5 +175,52 @@ describe('search package', () => {
 		])
 
 		expect(ranked[0]?.resultType).toBe('scoreboard')
+	})
+
+	test('assesses Vega odds freshness guardrails', () => {
+		const guardrails = assessSearchGuardrails(
+			'What is the spread tonight?',
+			[
+				{
+					id: '1',
+					publishedAt: '2026-03-29T10:00:00.000Z',
+					resultType: 'odds',
+					snippet: 'The line opened at -4.5.',
+					sourceName: 'odds.example',
+					title: 'Latest spread update',
+					url: 'https://odds.example/spread',
+				},
+			],
+			{ now: new Date('2026-03-29T18:30:00.000Z') }
+		)
+
+		expect(guardrails.intent).toBe('odds')
+		expect(guardrails.hasOddsResults).toBe(true)
+		expect(guardrails.freshnessStatus).toBe('stale')
+	})
+
+	test('adds Vega market warnings to the prompt context when odds are missing', () => {
+		const context = buildSearchPromptContext(
+			{
+				freshness: 'live',
+				league: 'NBA',
+				provider: 'tavily',
+				query: 'What is the spread tonight?',
+				results: [
+					{
+						id: '1',
+						publishedAt: '2026-03-29T22:00:00.000Z',
+						resultType: 'article',
+						snippet: 'Preview coverage without a quoted line.',
+						sourceName: 'espn.com',
+						title: 'Game preview',
+						url: 'https://www.espn.com/nba/story/_/id/1/game-preview',
+					},
+				],
+			},
+			{ personaSlug: 'vega' }
+		)
+
+		expect(context).toContain('Vega warning: no dedicated odds result was retrieved')
 	})
 })

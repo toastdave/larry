@@ -21,7 +21,8 @@ Turn Larry into a multi-persona sports AI app with distinct voices that feel int
 - Completed: persona profile primitives exist in the data model for future experimentation
 - Completed: runtime persona selection now supports Larry, Scout, and Vega at the conversation level
 - Completed: users can now save favorite and rival teams, and those preferences feed the live prompt path across personas
-- Remaining: stronger safety guidance for gambling and abuse edges
+- Completed: Vega now gets stricter prompt and fallback guardrails when odds context is stale, missing, or unverified
+- Remaining: abuse-edge guidance and deeper persona eval coverage
 
 ## Requirements
 

@@ -37,6 +37,20 @@ describe('chat helpers', () => {
 		expect(reply).toContain('Celtics')
 	})
 
+	test('adds Vega market freshness guardrails when odds context is stale', () => {
+		const reply = buildLocalReply({
+			marketFreshestPublishedAt: '2026-03-29T10:00:00.000Z',
+			marketFreshnessStatus: 'stale',
+			marketHasOddsResults: true,
+			marketIntent: 'odds',
+			personaSlug: 'vega',
+			prompt: 'What is the spread tonight?',
+		})
+
+		expect(reply).toContain('too old to treat like a live board')
+		expect(reply).toContain('informational')
+	})
+
 	test('chunks text for streaming', () => {
 		expect(chunkTextForStreaming('one two three four five six')).toEqual([
 			'one two three four ',

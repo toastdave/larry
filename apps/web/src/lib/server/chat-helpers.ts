@@ -14,6 +14,10 @@ const leagueTakes: Record<string, string> = {
 type ReplyOptions = {
 	favoriteTeam?: string | null
 	historyCount?: number
+	marketFreshestPublishedAt?: string | null
+	marketFreshnessStatus?: 'fresh' | 'stale' | 'unknown'
+	marketHasOddsResults?: boolean
+	marketIntent?: 'general' | 'injury' | 'odds' | 'scoreboard' | 'standings'
 	personaSlug?: SportsPersonaSlug | string | null
 	prompt: string
 	rivalTeam?: string | null
@@ -66,6 +70,10 @@ export function chunkTextForStreaming(text: string) {
 export function buildLocalReply({
 	favoriteTeam,
 	historyCount = 0,
+	marketFreshestPublishedAt,
+	marketFreshnessStatus,
+	marketHasOddsResults,
+	marketIntent,
 	personaSlug,
 	prompt,
 	rivalTeam,
@@ -80,6 +88,16 @@ export function buildLocalReply({
 	const rivalNudge = rivalTeam
 		? `And yes, I know you would enjoy seeing ${rivalTeam} eat gravel.`
 		: 'No rivalry card to play yet, so I am keeping the elbows holstered.'
+	const vegaMarketGuardrailLine =
+		persona.slug === 'vega' && marketIntent === 'odds'
+			? !marketHasOddsResults
+				? 'I do not have a trustworthy live spread, total, or moneyline in hand, so I am not dressing up a guess as a real board.'
+				: marketFreshnessStatus === 'stale' && marketFreshestPublishedAt
+					? `The freshest market context I found is from ${new Date(marketFreshestPublishedAt).toLocaleString('en-US')}, which is too old to treat like a live board.`
+					: marketFreshnessStatus === 'unknown'
+						? 'The market timestamps I found are incomplete, so I cannot call the board verified and current.'
+						: null
+			: null
 	const personaFallbackLine =
 		persona.slug === 'scout'
 			? 'Let me give you the clean version: isolate the trend, pressure-test the sample, and do not confuse a heater with a real shift.'
@@ -88,6 +106,14 @@ export function buildLocalReply({
 				: 'So yes, I still have a take even when the live wires are acting up.'
 
 	if (needsFreshSearch) {
+		if (vegaMarketGuardrailLine) {
+			return [
+				vegaMarketGuardrailLine,
+				'What I can do is keep this informational: watch the injury wire, check fresh market movement, and confirm the live number before trusting any price-dependent angle.',
+				`${leagueTake} ${fandomNudge} ${rivalNudge}`,
+			].join(' ')
+		}
+
 		const searchFallbackLead =
 			persona.slug === 'scout'
 				? 'This is the kind of question where I want the latest numbers before I publish the scouting report.'

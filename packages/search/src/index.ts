@@ -26,7 +26,19 @@ export type SearchResponse = {
 	warning?: string
 }
 
-type SearchIntent = 'general' | 'injury' | 'odds' | 'scoreboard' | 'standings'
+export type SearchIntent = 'general' | 'injury' | 'odds' | 'scoreboard' | 'standings'
+
+export type SearchFreshnessStatus = 'fresh' | 'stale' | 'unknown'
+
+export type SearchGuardrailAssessment = {
+	freshestPublishedAt: string | null
+	freshnessStatus: SearchFreshnessStatus
+	hasInjuryResults: boolean
+	hasOddsResults: boolean
+	hasStructuredResults: boolean
+	intent: SearchIntent
+	stalenessWindowHours: number
+}
 
 type EspnCompetition = {
 	competitors?: Array<{
@@ -157,7 +169,22 @@ function prefersStandings(query: string) {
 	return value.includes('standing') || value.includes('playoff picture') || value.includes('table')
 }
 
-function inferSearchIntent(query: string): SearchIntent {
+function getStalenessWindowHours(intent: SearchIntent) {
+	switch (intent) {
+		case 'odds':
+			return 6
+		case 'injury':
+			return 12
+		case 'scoreboard':
+			return 24
+		case 'standings':
+			return 72
+		default:
+			return 72
+	}
+}
+
+export function inferSearchIntent(query: string): SearchIntent {
 	const value = query.toLowerCase()
 
 	if (
@@ -196,6 +223,63 @@ function inferSearchIntent(query: string): SearchIntent {
 	}
 
 	return 'general'
+}
+
+function getFreshestTimestamp(results: NormalizedSearchResult[]) {
+	const publishedTimestamps = results
+		.map((result) => result.publishedAt)
+		.filter((value): value is string => Boolean(value))
+
+	if (publishedTimestamps.length === 0) {
+		return null
+	}
+
+	return publishedTimestamps.sort((left, right) => +new Date(right) - +new Date(left))[0] ?? null
+}
+
+export function assessSearchGuardrails(
+	query: string,
+	results: NormalizedSearchResult[],
+	options?: { now?: Date }
+): SearchGuardrailAssessment {
+	const intent = inferSearchIntent(query)
+	const stalenessWindowHours = getStalenessWindowHours(intent)
+	const relevantResults =
+		intent === 'odds'
+			? results.filter((result) => result.resultType === 'odds' || result.resultType === 'injury')
+			: results
+	const freshestPublishedAt = getFreshestTimestamp(relevantResults)
+	const hasOddsResults = results.some((result) => result.resultType === 'odds')
+	const hasInjuryResults = results.some((result) => result.resultType === 'injury')
+	const hasStructuredResults = results.some((result) => result.resultType !== 'article')
+
+	if (!freshestPublishedAt) {
+		return {
+			freshestPublishedAt: null,
+			freshnessStatus: 'unknown',
+			hasInjuryResults,
+			hasOddsResults,
+			hasStructuredResults,
+			intent,
+			stalenessWindowHours,
+		}
+	}
+
+	const now = options?.now ?? new Date()
+	const ageInHours = Math.max(
+		0,
+		(now.getTime() - new Date(freshestPublishedAt).getTime()) / 3_600_000
+	)
+
+	return {
+		freshestPublishedAt,
+		freshnessStatus: ageInHours <= stalenessWindowHours ? 'fresh' : 'stale',
+		hasInjuryResults,
+		hasOddsResults,
+		hasStructuredResults,
+		intent,
+		stalenessWindowHours,
+	}
 }
 
 function resultPriorityForIntent(intent: SearchIntent, resultType: SearchResultType) {
@@ -477,10 +561,16 @@ export function inferCitationKind(resultType: SearchResultType): CitationKind {
 	}
 }
 
-export function buildSearchPromptContext(response: SearchResponse, maxResults = 4) {
+export function buildSearchPromptContext(
+	response: SearchResponse,
+	options?: { maxResults?: number; personaSlug?: string | null }
+) {
 	if (response.results.length === 0) {
 		return null
 	}
+
+	const maxResults = options?.maxResults ?? 4
+	const guardrails = assessSearchGuardrails(response.query, response.results)
 
 	const resultLines = response.results.slice(0, maxResults).map((result, index) => {
 		const publishedDate = result.publishedAt
@@ -495,8 +585,30 @@ export function buildSearchPromptContext(response: SearchResponse, maxResults = 
 		'Use the retrieved context below as the factual source of truth for time-sensitive claims.',
 		'Mention source names naturally when using a retrieved fact and do not invent live details beyond what is supported here.',
 		'When you use a retrieved fact, cite it inline with bracketed result numbers like [1] or [2][3], matching the numbered list below.',
+		guardrails.freshestPublishedAt
+			? `Freshest retrieved timestamp: ${new Date(guardrails.freshestPublishedAt).toLocaleString('en-US')}.`
+			: 'Retrieved sources do not all include trustworthy timestamps, so note when timing is uncertain.',
+		options?.personaSlug === 'scout'
+			? guardrails.hasStructuredResults
+				? 'Scout note: lead with structured evidence and comparisons before leaning on narrative framing.'
+				: 'Scout note: structured results were not retrieved, so say when the answer leans on narrative reporting instead of hard data.'
+			: null,
+		options?.personaSlug === 'vega' && guardrails.intent === 'odds'
+			? !guardrails.hasOddsResults
+				? 'Vega warning: no dedicated odds result was retrieved. Do not present a current spread, total, or moneyline as live; say the board is unavailable or may have moved and keep the answer informational.'
+				: guardrails.freshnessStatus === 'stale'
+					? `Vega warning: the freshest market context is older than ${guardrails.stalenessWindowHours} hours. Say the board may be stale before discussing any price.`
+					: guardrails.freshnessStatus === 'unknown'
+						? 'Vega warning: market timestamps are missing or incomplete. Say that freshness is unverified before discussing any price.'
+						: 'Vega note: keep any odds framing tied to the retrieved sources and remind the user that market prices can move fast.'
+			: null,
+		options?.personaSlug === 'vega' && guardrails.intent === 'odds' && !guardrails.hasInjuryResults
+			? 'Vega warning: dedicated injury results were not retrieved, so say lineup context may still move the market.'
+			: null,
 		...resultLines,
-	].join(' ')
+	]
+		.filter(Boolean)
+		.join(' ')
 }
 
 export function mergeSearchResponses(...responses: SearchResponse[]): SearchResponse {

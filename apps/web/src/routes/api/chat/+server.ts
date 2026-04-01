@@ -85,6 +85,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			searchContext = await prepareSearchContext({
 				conversationId: startedTurn.conversation.id,
 				messageId: startedTurn.userMessage.id,
+				personaSlug: startedTurn.personaSlug,
 				prompt,
 				userId,
 			})
@@ -115,6 +116,12 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 				return finalPayloadPromise
 			},
 			streamChunks: async function* () {
+				const shouldForceVegaGuardrailReply =
+					startedTurn.personaSlug === 'vega' &&
+					searchContext?.guardrails.intent === 'odds' &&
+					(!searchContext.guardrails.hasOddsResults ||
+						searchContext.guardrails.freshnessStatus !== 'fresh')
+
 				if (
 					startedTurn.userMessage.searchRequired &&
 					(!searchContext || searchContext.response.results.length === 0)
@@ -141,6 +148,45 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 						model: 'larry-local-fallback',
 						providerName: 'fallback',
 						replyText: fallbackReply,
+						userId,
+					}).then((assistantResult) => ({
+						assistantMessage: assistantResult.assistantMessage,
+						conversation: assistantResult.conversation,
+						userMessage: startedTurn.userMessage,
+					}))
+
+					return
+				}
+
+				if (shouldForceVegaGuardrailReply && searchContext) {
+					const guardedReply = buildLocalReply({
+						favoriteTeam: startedTurn.favoriteTeam,
+						marketFreshestPublishedAt: searchContext.guardrails.freshestPublishedAt,
+						marketFreshnessStatus: searchContext.guardrails.freshnessStatus,
+						marketHasOddsResults: searchContext.guardrails.hasOddsResults,
+						marketIntent: searchContext.guardrails.intent,
+						personaSlug: startedTurn.personaSlug,
+						prompt,
+						rivalTeam: startedTurn.rivalTeam,
+					})
+
+					for (const chunk of chunkTextForStreaming(guardedReply)) {
+						yield chunk
+					}
+
+					finalPayloadPromise = finishAssistantTurn({
+						citations: searchContext.citations,
+						conversationId: startedTurn.conversation.id,
+						metadata: {
+							fallback: true,
+							searchFreshnessStatus: searchContext.guardrails.freshnessStatus,
+							searchGuardrailIntent: searchContext.guardrails.intent,
+							searchWarning: searchContext.response.warning ?? null,
+							vegaGuardrail: true,
+						},
+						model: 'larry-vega-guardrail',
+						providerName: 'guardrail',
+						replyText: guardedReply,
 						userId,
 					}).then((assistantResult) => ({
 						assistantMessage: assistantResult.assistantMessage,

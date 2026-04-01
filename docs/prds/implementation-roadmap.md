@@ -25,8 +25,8 @@ Status: complete for the first production-style pass.
 
 Status: in progress, with ranked retrieval and inline numbered citation references now live in chat.
 
-- Completed: Tavily web search adapter, ESPN structured scoreboard/standings adapter, persisted search traces, stronger result ranking, citation pills in chat, and inline numbered citation references in the transcript
-- Remaining: injuries and odds coverage and stronger freshness handling for odds-aware answers
+- Completed: Tavily web search adapter, ESPN structured scoreboard/standings adapter, persisted search traces, stronger result ranking, citation pills in chat, inline numbered citation references in the transcript, and Vega stale-board guardrails for odds-oriented prompts
+- Remaining: injuries and odds coverage
 
 ## Phase 4 - Multi-Persona Product Layer
 
@@ -38,8 +38,8 @@ Status: in progress, with ranked retrieval and inline numbered citation referenc
 
 Status: partially started.
 
-- Completed: base Larry persona prompt, seeded persona profile, billing schema, seeded plans, usage-ledger writes for search/inference, runtime persona selection, conversation persona persistence, persona-aware chat UX, and account-driven favorite/rival team context in the live prompt path
-- Remaining: stronger betting-adjacent guardrails
+- Completed: base Larry persona prompt, seeded persona profile, billing schema, seeded plans, usage-ledger writes for search/inference, runtime persona selection, conversation persona persistence, persona-aware chat UX, account-driven favorite/rival team context in the live prompt path, and stronger Vega betting-adjacent guardrails
+- Remaining: abuse-edge guidance and deeper persona eval coverage
 
 ## Phase 5 - Billing, Packaging, And Growth
 
