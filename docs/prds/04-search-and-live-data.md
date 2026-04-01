@@ -23,7 +23,9 @@ Give Larry, Scout, and Vega access to fresh sports facts and narrative context s
 - Completed: merged search results now rank structured live facts ahead of less-relevant narrative coverage for time-sensitive prompts
 - Completed: retrieved answers can reference inline numbered citations that map to transcript sources
 - Completed: Vega odds-oriented prompts now get explicit stale-board and missing-odds guardrails before the app will act like a price is trustworthy
-- Remaining: structured injuries and odds adapters and deeper Scout-specific retrieval shaping
+- Completed: ESPN-backed structured injuries retrieval is wired for supported leagues
+- Completed: ESPN-backed structured odds retrieval is wired for live matchup boards, with injury context merged into odds-oriented searches
+- Remaining: deeper Scout-specific retrieval shaping and richer provider-native freshness metadata for market results
 
 ## Requirements
 

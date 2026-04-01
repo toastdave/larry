@@ -49,6 +49,7 @@ type EspnCompetition = {
 		winner?: boolean
 	}>
 	date?: string
+	id?: string
 	name?: string
 	status?: { type?: { detail?: string; shortDetail?: string } }
 	venue?: { fullName?: string }
@@ -71,6 +72,38 @@ type EspnStandingEntry = {
 		shortDisplayName?: string
 	}>
 	team?: { abbreviation?: string; displayName?: string }
+}
+
+type EspnTeamInjuryEntry = {
+	displayName?: string
+	id?: string
+	injuries?: Array<{
+		athlete?: {
+			displayName?: string
+			links?: Array<{ href?: string; rel?: string[] }>
+			shortName?: string
+		}
+		date?: string
+		id?: string
+		longComment?: string
+		shortComment?: string
+		status?: string
+	}>
+}
+
+type EspnOddsItem = {
+	awayTeamOdds?: {
+		moneyLine?: number
+	}
+	details?: string
+	homeTeamOdds?: {
+		moneyLine?: number
+	}
+	overOdds?: number
+	overUnder?: number
+	provider?: { name?: string }
+	spread?: number
+	underOdds?: number
 }
 
 type SportsDataRequest = {
@@ -164,9 +197,74 @@ function leagueToEspnPath(league: SupportedLeague) {
 	}
 }
 
+function leagueToEspnCoreLeague(league: SupportedLeague) {
+	switch (league) {
+		case 'MLB':
+			return 'mlb'
+		case 'NBA':
+			return 'nba'
+		case 'NCAAB':
+			return 'mens-college-basketball'
+		case 'NCAAF':
+			return 'college-football'
+		case 'NFL':
+			return 'nfl'
+	}
+}
+
+function buildEspnWebUrl(sportPath: string, suffix: string) {
+	return `https://www.espn.com/${sportPath}/${suffix}`
+}
+
 function prefersStandings(query: string) {
 	const value = query.toLowerCase()
 	return value.includes('standing') || value.includes('playoff picture') || value.includes('table')
+}
+
+function prefersInjuries(query: string) {
+	return inferSearchIntent(query) === 'injury'
+}
+
+function prefersOdds(query: string) {
+	return inferSearchIntent(query) === 'odds'
+}
+
+const queryStopWords = new Set([
+	'and',
+	'are',
+	'for',
+	'from',
+	'game',
+	'give',
+	'how',
+	'injury',
+	'injuries',
+	'latest',
+	'line',
+	'live',
+	'moneyline',
+	'news',
+	'odds',
+	'over',
+	'score',
+	'scores',
+	'spread',
+	'standings',
+	'team',
+	'the',
+	'today',
+	'tonight',
+	'total',
+	'what',
+	'who',
+	'with',
+])
+
+function normalizeQueryTerms(query: string) {
+	return query
+		.toLowerCase()
+		.split(/[^a-z0-9]+/)
+		.filter((term) => term.length >= 3 && !queryStopWords.has(term))
 }
 
 function getStalenessWindowHours(intent: SearchIntent) {
@@ -364,6 +462,19 @@ function getProviderRankingBonus(result: NormalizedSearchResult) {
 	return 0
 }
 
+function getQueryMatchBonus(query: string, result: NormalizedSearchResult) {
+	const terms = normalizeQueryTerms(query)
+
+	if (terms.length === 0) {
+		return 0
+	}
+
+	const haystack = `${result.title} ${result.snippet} ${result.sourceName}`.toLowerCase()
+	const matchCount = terms.filter((term) => haystack.includes(term)).length
+
+	return Math.min(matchCount * 6, 24)
+}
+
 function getDedupedResults(results: NormalizedSearchResult[]) {
 	const seen = new Set<string>()
 
@@ -387,6 +498,7 @@ export function rankSearchResults(query: string, results: NormalizedSearchResult
 			result,
 			score:
 				resultPriorityForIntent(intent, result.resultType) +
+				getQueryMatchBonus(query, result) +
 				getRecencyBonus(result.publishedAt) +
 				getStructuredSourceBonus(result) +
 				getProviderRankingBonus(result) +
@@ -481,6 +593,86 @@ function normalizeEspnStandingsResults(league: SupportedLeague, entries: EspnSta
 				url: `https://www.espn.com/${league.toLowerCase()}/standings`,
 			} satisfies NormalizedSearchResult
 		})
+}
+
+function normalizeEspnInjuryResults(
+	league: SupportedLeague,
+	sportPath: string,
+	teams: EspnTeamInjuryEntry[]
+) {
+	return teams
+		.flatMap((team) =>
+			(team.injuries ?? []).map((injury) => {
+				const athleteName = injury.athlete?.displayName ?? injury.athlete?.shortName ?? 'Player'
+				const playerCardUrl =
+					injury.athlete?.links?.find((link) => link.rel?.includes('playercard'))?.href ??
+					buildEspnWebUrl(sportPath, 'injuries')
+
+				return {
+					id: injury.id ?? `${team.id ?? team.displayName}-${athleteName}`,
+					metadata: {
+						athleteName,
+						league,
+						status: injury.status ?? null,
+						teamName: team.displayName ?? null,
+					},
+					publishedAt: injury.date ?? null,
+					resultType: 'injury' satisfies SearchResultType,
+					snippet: normalizeSnippet(
+						`${athleteName} (${team.displayName ?? 'Unknown team'}) - ${injury.status ?? 'Status unavailable'}. ${injury.shortComment ?? injury.longComment ?? 'No additional injury note available.'}`
+					),
+					sourceName: 'ESPN injuries',
+					title: `${athleteName} injury update`,
+					url: playerCardUrl,
+				} satisfies NormalizedSearchResult
+			})
+		)
+		.sort((left, right) => +new Date(right.publishedAt ?? 0) - +new Date(left.publishedAt ?? 0))
+		.slice(0, 12)
+}
+
+function formatMoneyline(label: string, value: number | undefined) {
+	if (typeof value !== 'number') {
+		return null
+	}
+
+	return `${label} ML ${value > 0 ? `+${value}` : value}`
+}
+
+function normalizeEspnOddsResults(
+	league: SupportedLeague,
+	sportPath: string,
+	eventsWithOdds: Array<{ competition: EspnCompetition; event: EspnEvent; odds: EspnOddsItem }>,
+	retrievedAt: string
+) {
+	return eventsWithOdds.map(({ competition, event, odds }, index) => {
+		const awayTeam = competition.competitors?.find((team) => team.homeAway === 'away')
+		const homeTeam = competition.competitors?.find((team) => team.homeAway === 'home')
+		const providerName = odds.provider?.name?.replace('DraftKings', 'Draft Kings') ?? 'ESPN odds'
+		const moneylineSummary = [
+			formatMoneyline(awayTeam?.team?.abbreviation ?? 'AWAY', odds.awayTeamOdds?.moneyLine),
+			formatMoneyline(homeTeam?.team?.abbreviation ?? 'HOME', odds.homeTeamOdds?.moneyLine),
+		]
+			.filter(Boolean)
+			.join('. ')
+
+		return {
+			id: `${event.id ?? competition.id ?? index}-odds`,
+			metadata: {
+				league,
+				providerName,
+				retrievedAt,
+			},
+			publishedAt: retrievedAt,
+			resultType: 'odds' satisfies SearchResultType,
+			snippet: normalizeSnippet(
+				`${odds.details ?? 'Market details unavailable'}. Total ${odds.overUnder ?? 'N/A'}. ${moneylineSummary}${moneylineSummary ? '.' : ''} Over ${odds.overOdds ?? 'N/A'}, under ${odds.underOdds ?? 'N/A'}.`
+			),
+			sourceName: `${providerName} odds`,
+			title: `${competition.name ?? event.name ?? event.shortName ?? 'Matchup'} odds snapshot`,
+			url: buildEspnWebUrl(sportPath, 'scoreboard'),
+		} satisfies NormalizedSearchResult
+	})
 }
 
 function normalizeTavilyResults(query: string, results: TavilyResult[]) {
@@ -703,6 +895,36 @@ export async function searchSportsWeb({
 	}
 }
 
+async function fetchJsonOrThrow<T>(fetchImpl: typeof fetch, url: string, errorMessage: string) {
+	const response = await fetchImpl(url)
+
+	if (!response.ok) {
+		throw new Error(`${errorMessage} ${response.status}.`)
+	}
+
+	return (await response.json()) as T
+}
+
+async function fetchEspnOddsForCompetition(input: {
+	competitionId: string
+	coreLeague: string
+	eventId: string
+	fetchImpl: typeof fetch
+	sport: string
+}) {
+	const response = await input.fetchImpl(
+		`https://sports.core.api.espn.com/v2/sports/${input.sport}/leagues/${input.coreLeague}/events/${input.eventId}/competitions/${input.competitionId}/odds?lang=en&region=us`
+	)
+
+	if (!response.ok) {
+		return null
+	}
+
+	const payload = (await response.json()) as { items?: EspnOddsItem[] }
+
+	return payload.items?.[0] ?? null
+}
+
 export async function searchStructuredSportsData({
 	fetch: fetchImpl = fetch,
 	provider = 'espn',
@@ -734,20 +956,16 @@ export async function searchStructuredSportsData({
 	}
 
 	const sportPath = leagueToEspnPath(league)
-	const endpoint = prefersStandings(query)
-		? `https://site.api.espn.com/apis/site/v2/sports/${sportPath}/standings`
-		: `https://site.api.espn.com/apis/site/v2/sports/${sportPath}/scoreboard`
-
-	const response = await fetchImpl(endpoint)
-
-	if (!response.ok) {
-		throw new Error(`Structured sports data request failed with ${response.status}.`)
-	}
+	const intent = inferSearchIntent(query)
 
 	if (prefersStandings(query)) {
-		const payload = (await response.json()) as {
+		const payload = await fetchJsonOrThrow<{
 			children?: Array<{ standings?: { entries?: EspnStandingEntry[] } }>
-		}
+		}>(
+			fetchImpl,
+			`https://site.api.espn.com/apis/site/v2/sports/${sportPath}/standings`,
+			'Structured sports data request failed with'
+		)
 
 		const entries = payload.children?.flatMap((child) => child.standings?.entries ?? []) ?? []
 
@@ -760,13 +978,103 @@ export async function searchStructuredSportsData({
 		}
 	}
 
-	const payload = (await response.json()) as { events?: EspnEvent[] }
+	if (prefersInjuries(query)) {
+		const payload = await fetchJsonOrThrow<{ injuries?: EspnTeamInjuryEntry[] }>(
+			fetchImpl,
+			`https://site.api.espn.com/apis/site/v2/sports/${sportPath}/injuries`,
+			'Structured sports data request failed with'
+		)
+
+		return {
+			freshness,
+			league,
+			provider,
+			query,
+			results: rankSearchResults(
+				query,
+				normalizeEspnInjuryResults(league, sportPath, payload.injuries ?? [])
+			),
+		}
+	}
+
+	if (prefersOdds(query)) {
+		const sport = sportPath.split('/')[0] ?? 'football'
+		const coreLeague = leagueToEspnCoreLeague(league)
+		const retrievedAt = new Date().toISOString()
+		const [scoreboardPayload, injuriesPayload] = await Promise.all([
+			fetchJsonOrThrow<{ events?: EspnEvent[] }>(
+				fetchImpl,
+				`https://site.api.espn.com/apis/site/v2/sports/${sportPath}/scoreboard`,
+				'Structured sports data request failed with'
+			),
+			fetchJsonOrThrow<{ injuries?: EspnTeamInjuryEntry[] }>(
+				fetchImpl,
+				`https://site.api.espn.com/apis/site/v2/sports/${sportPath}/injuries`,
+				'Structured sports data request failed with'
+			),
+		])
+
+		const events = scoreboardPayload.events ?? []
+		const oddsEntries = await Promise.all(
+			events.slice(0, 12).map(async (event) => {
+				const competition = event.competitions?.[0]
+
+				if (!event.id || !competition?.id) {
+					return null
+				}
+
+				const odds = await fetchEspnOddsForCompetition({
+					competitionId: competition.id,
+					coreLeague,
+					eventId: event.id,
+					fetchImpl,
+					sport,
+				})
+
+				if (!odds) {
+					return null
+				}
+
+				return { competition, event, odds }
+			})
+		)
+
+		const oddsResults = normalizeEspnOddsResults(
+			league,
+			sportPath,
+			oddsEntries.flatMap((entry) => (entry ? [entry] : [])),
+			retrievedAt
+		)
+		const injuryResults = normalizeEspnInjuryResults(
+			league,
+			sportPath,
+			injuriesPayload.injuries ?? []
+		)
+
+		return {
+			freshness,
+			league,
+			provider,
+			query,
+			results: rankSearchResults(query, [...oddsResults, ...injuryResults]),
+			warning:
+				oddsResults.length === 0
+					? 'No dedicated structured odds board was available from ESPN for the current slate.'
+					: undefined,
+		}
+	}
+
+	const payload = await fetchJsonOrThrow<{ events?: EspnEvent[] }>(
+		fetchImpl,
+		`https://site.api.espn.com/apis/site/v2/sports/${sportPath}/scoreboard`,
+		'Structured sports data request failed with'
+	)
 
 	return {
 		freshness,
 		league,
 		provider,
 		query,
-		results: normalizeEspnScoreboardResults(league, payload.events ?? []),
+		results: rankSearchResults(query, normalizeEspnScoreboardResults(league, payload.events ?? [])),
 	}
 }

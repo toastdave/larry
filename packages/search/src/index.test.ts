@@ -110,6 +110,138 @@ describe('search package', () => {
 		expect(response.results[0]?.snippet).toContain('BOS 109 at NYK 101')
 	})
 
+	test('normalizes structured injuries results from ESPN', async () => {
+		const response = await searchStructuredSportsData({
+			fetch: (async () =>
+				new Response(
+					JSON.stringify({
+						injuries: [
+							{
+								displayName: 'New York Knicks',
+								id: '1',
+								injuries: [
+									{
+										athlete: {
+											displayName: 'Jalen Brunson',
+											links: [
+												{
+													href: 'https://www.espn.com/nba/player/_/id/3934672/jalen-brunson',
+													rel: ['playercard'],
+												},
+											],
+										},
+										date: '2026-03-31T21:03:00.000Z',
+										id: 'injury-1',
+										shortComment: 'Brunson is questionable for Wednesday.',
+										status: 'Day-To-Day',
+									},
+								],
+							},
+						],
+					}),
+					{ status: 200 }
+				)) as unknown as typeof fetch,
+			provider: 'espn',
+			query: 'latest nba injury report today',
+		})
+
+		expect(response.results[0]?.resultType).toBe('injury')
+		expect(response.results[0]?.sourceName).toBe('ESPN injuries')
+		expect(response.results[0]?.title).toContain('Jalen Brunson')
+	})
+
+	test('normalizes structured odds and injury results for odds queries', async () => {
+		const mockFetch = (async (input: RequestInfo | URL) => {
+			const url = String(input)
+
+			if (url.includes('/scoreboard')) {
+				return new Response(
+					JSON.stringify({
+						events: [
+							{
+								competitions: [
+									{
+										competitors: [
+											{
+												homeAway: 'away',
+												score: '109',
+												team: { abbreviation: 'NYK', displayName: 'New York Knicks' },
+											},
+											{
+												homeAway: 'home',
+												score: '111',
+												team: { abbreviation: 'BOS', displayName: 'Boston Celtics' },
+											},
+										],
+										date: '2026-03-31T23:00:00.000Z',
+										id: '401810954',
+										name: 'New York Knicks at Boston Celtics',
+									},
+								],
+								id: '401810954',
+							},
+						],
+					}),
+					{ status: 200 }
+				)
+			}
+
+			if (url.includes('/injuries')) {
+				return new Response(
+					JSON.stringify({
+						injuries: [
+							{
+								displayName: 'Boston Celtics',
+								id: '2',
+								injuries: [
+									{
+										athlete: { displayName: 'Jayson Tatum' },
+										date: '2026-03-31T18:00:00.000Z',
+										id: 'injury-2',
+										shortComment: 'Tatum is probable.',
+										status: 'Probable',
+									},
+								],
+							},
+						],
+					}),
+					{ status: 200 }
+				)
+			}
+
+			if (url.includes('/odds?lang=en&region=us')) {
+				return new Response(
+					JSON.stringify({
+						items: [
+							{
+								awayTeamOdds: { moneyLine: 110 },
+								details: 'BOS -2.5',
+								homeTeamOdds: { moneyLine: -130 },
+								overOdds: -110,
+								overUnder: 225.5,
+								provider: { name: 'DraftKings' },
+								underOdds: -110,
+							},
+						],
+					}),
+					{ status: 200 }
+				)
+			}
+
+			return new Response(null, { status: 404 })
+		}) as unknown as typeof fetch
+
+		const response = await searchStructuredSportsData({
+			fetch: mockFetch,
+			provider: 'espn',
+			query: 'latest nba spread tonight for Knicks vs Celtics',
+		})
+
+		expect(response.results.some((result) => result.resultType === 'odds')).toBe(true)
+		expect(response.results.some((result) => result.resultType === 'injury')).toBe(true)
+		expect(response.results[0]?.title).toContain('Knicks')
+	})
+
 	test('merges structured and narrative responses into one prompt context', () => {
 		const merged = mergeSearchResponses(
 			{
