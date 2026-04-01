@@ -17,7 +17,7 @@ Launch a hybrid monetization system that keeps inference costs sustainable witho
 - Completed: billing schema, seeded plans, entitlement primitives, and usage-ledger tables exist
 - Completed: chat inference and live retrieval both write usage rows for future plan enforcement
 - Completed: Polar sandbox workflow is documented for future integration work
-- Remaining: checkout, webhook processing, entitlement sync, plan enforcement, and upgrade messaging in-product
+- Remaining: checkout, webhook processing, entitlement sync, plan enforcement, upgrade messaging in-product, and any final decision on persona-based packaging
 
 ## Requirements
 
@@ -26,6 +26,8 @@ Launch a hybrid monetization system that keeps inference costs sustainable witho
 - Subscription access and future credit packs can coexist.
 - Monetization rules do not break the core chat experience.
 - Local development, Polar sandbox, and live production billing are treated as separate environments.
+- Multi-persona product architecture should not depend on billing enforcement before the personas can launch.
+- Persona access can become an entitlement later, but the initial PRD direction should treat persona support as a product capability first.
 
 ## Task breakdown
 
@@ -35,6 +37,7 @@ Launch a hybrid monetization system that keeps inference costs sustainable witho
 - Add checkout and webhook PRD tasks for Polar.
 - Validate subscription checkout, webhook replay, and entitlement sync in Polar sandbox before enabling live billing.
 - Add product messaging for upgrade prompts and limit states.
+- Decide separately whether Scout and Vega become paid entitlements, premium defaults, or broadly available personas after product validation.
 
 ## Acceptance criteria
 
