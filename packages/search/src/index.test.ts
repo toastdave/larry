@@ -283,6 +283,77 @@ describe('search package', () => {
 		expect(buildSearchPromptContext(merged)).toContain('Live sports context is available')
 	})
 
+	test('ranks structured evidence ahead of narrative coverage for Scout', () => {
+		const ranked = rankSearchResults(
+			'compare these playoff teams',
+			[
+				{
+					id: 'article-1',
+					metadata: { score: 0.91 },
+					publishedAt: '2026-03-31T12:00:00.000Z',
+					resultType: 'article',
+					snippet: 'A narrative preview of the matchup.',
+					sourceName: 'espn.com',
+					title: 'Playoff preview',
+					url: 'https://www.espn.com/nba/story/_/id/1/playoff-preview',
+				},
+				{
+					id: 'standing-1',
+					publishedAt: '2026-03-31T12:00:00.000Z',
+					resultType: 'standing',
+					snippet: 'Record: 54-28. Games back: 1.0.',
+					sourceName: 'ESPN standings',
+					title: 'Boston Celtics standings snapshot',
+					url: 'https://www.espn.com/nba/standings',
+				},
+			],
+			{ personaSlug: 'scout' }
+		)
+
+		expect(ranked[0]?.resultType).toBe('standing')
+	})
+
+	test('merges search responses using persona-aware ranking', () => {
+		const merged = mergeSearchResponses(
+			{
+				freshness: 'live',
+				league: 'NBA',
+				provider: 'espn',
+				query: 'compare these playoff teams',
+				results: [
+					{
+						id: 'standing-1',
+						resultType: 'standing',
+						snippet: 'Record: 54-28.',
+						sourceName: 'ESPN standings',
+						title: 'Boston Celtics standings snapshot',
+						url: 'https://www.espn.com/nba/standings',
+					},
+				],
+			},
+			{
+				freshness: 'live',
+				league: 'NBA',
+				provider: 'tavily',
+				query: 'compare these playoff teams',
+				results: [
+					{
+						id: 'article-1',
+						metadata: { score: 0.95 },
+						resultType: 'article',
+						snippet: 'A narrative preview.',
+						sourceName: 'espn.com',
+						title: 'Playoff preview',
+						url: 'https://www.espn.com/nba/story/_/id/1/playoff-preview',
+					},
+				],
+			},
+			{ personaSlug: 'scout' }
+		)
+
+		expect(merged.results[0]?.resultType).toBe('standing')
+	})
+
 	test('ranks live scoreboard results ahead of narrative articles for score queries', () => {
 		const ranked = rankSearchResults('latest nba score tonight', [
 			{

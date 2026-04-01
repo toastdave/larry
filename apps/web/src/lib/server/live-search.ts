@@ -92,7 +92,9 @@ export async function prepareSearchContext(input: {
 		}),
 	])
 
-	const response = mergeSearchResponses(sportsDataResponse, webResponse)
+	const response = mergeSearchResponses(sportsDataResponse, webResponse, {
+		personaSlug: input.personaSlug,
+	})
 	const storedCitations = [...sportsDataStored.results, ...webStored.results]
 	const citationLookup = new Map(
 		storedCitations.map((citation) => [

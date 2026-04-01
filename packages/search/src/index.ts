@@ -40,6 +40,10 @@ export type SearchGuardrailAssessment = {
 	stalenessWindowHours: number
 }
 
+type SearchRankingOptions = {
+	personaSlug?: string | null
+}
+
 type EspnCompetition = {
 	competitors?: Array<{
 		homeAway?: 'away' | 'home'
@@ -475,6 +479,61 @@ function getQueryMatchBonus(query: string, result: NormalizedSearchResult) {
 	return Math.min(matchCount * 6, 24)
 }
 
+function getPersonaRankingBonus(
+	personaSlug: string | null | undefined,
+	result: NormalizedSearchResult
+) {
+	switch (personaSlug) {
+		case 'larry':
+			switch (result.resultType) {
+				case 'article':
+					return 8
+				case 'scoreboard':
+					return 6
+				case 'standing':
+					return 4
+				case 'injury':
+					return 3
+				case 'odds':
+					return 1
+			}
+
+			return 0
+		case 'scout':
+			switch (result.resultType) {
+				case 'scoreboard':
+					return 12
+				case 'standing':
+					return 12
+				case 'injury':
+					return 5
+				case 'odds':
+					return 1
+				case 'article':
+					return -6
+			}
+
+			return 0
+		case 'vega':
+			switch (result.resultType) {
+				case 'odds':
+					return 14
+				case 'injury':
+					return 9
+				case 'scoreboard':
+					return 4
+				case 'standing':
+					return 2
+				case 'article':
+					return -4
+			}
+
+			return 0
+		default:
+			return 0
+	}
+}
+
 function getDedupedResults(results: NormalizedSearchResult[]) {
 	const seen = new Set<string>()
 
@@ -490,7 +549,11 @@ function getDedupedResults(results: NormalizedSearchResult[]) {
 	})
 }
 
-export function rankSearchResults(query: string, results: NormalizedSearchResult[]) {
+export function rankSearchResults(
+	query: string,
+	results: NormalizedSearchResult[],
+	options?: SearchRankingOptions
+) {
 	const intent = inferSearchIntent(query)
 
 	return getDedupedResults(results)
@@ -498,6 +561,7 @@ export function rankSearchResults(query: string, results: NormalizedSearchResult
 			result,
 			score:
 				resultPriorityForIntent(intent, result.resultType) +
+				getPersonaRankingBonus(options?.personaSlug, result) +
 				getQueryMatchBonus(query, result) +
 				getRecencyBonus(result.publishedAt) +
 				getStructuredSourceBonus(result) +
@@ -803,7 +867,15 @@ export function buildSearchPromptContext(
 		.join(' ')
 }
 
-export function mergeSearchResponses(...responses: SearchResponse[]): SearchResponse {
+export function mergeSearchResponses(
+	...inputs: Array<SearchResponse | SearchRankingOptions>
+): SearchResponse {
+	const maybeOptions = inputs.at(-1)
+	const options =
+		maybeOptions && !('query' in maybeOptions) ? (maybeOptions as SearchRankingOptions) : undefined
+	const responses = options
+		? (inputs.slice(0, -1) as SearchResponse[])
+		: (inputs as SearchResponse[])
 	const firstResponse = responses[0]
 
 	if (!firstResponse) {
@@ -823,7 +895,8 @@ export function mergeSearchResponses(...responses: SearchResponse[]): SearchResp
 		query: firstResponse.query,
 		results: rankSearchResults(
 			firstResponse.query,
-			responses.flatMap((response) => response.results)
+			responses.flatMap((response) => response.results),
+			options
 		),
 		warning: responses
 			.map((response) => response.warning)

@@ -23,6 +23,7 @@ Turn Larry into a multi-persona sports AI app with distinct voices that feel int
 - Completed: users can now save favorite and rival teams, and those preferences feed the live prompt path across personas
 - Completed: Vega now gets stricter prompt and fallback guardrails when odds context is stale, missing, or unverified
 - Completed: Vega can now lean on structured odds and injury retrieval before talking market context
+- Completed: Scout retrieval now ranks structured evidence ahead of looser narrative coverage when both are available
 - Remaining: abuse-edge guidance and deeper persona eval coverage
 
 ## Requirements
