@@ -24,7 +24,9 @@ Turn Larry into a multi-persona sports AI app with distinct voices that feel int
 - Completed: Vega now gets stricter prompt and fallback guardrails when odds context is stale, missing, or unverified
 - Completed: Vega can now lean on structured odds and injury retrieval before talking market context
 - Completed: Scout retrieval now ranks structured evidence ahead of looser narrative coverage when both are available
-- Remaining: abuse-edge guidance and deeper persona eval coverage
+- Completed: shared prompt guardrails now redirect abusive sports talk and reckless betting requests toward safer, analysis-first answers
+- Completed: persona eval cases now exist in code for style, evidence, and gambling-safety regression coverage
+- Remaining: broader abuse-edge response handling in the product UI and automated eval execution
 
 ## Requirements
 
@@ -57,6 +59,7 @@ Turn Larry into a multi-persona sports AI app with distinct voices that feel int
 - `Vega` should be positioned as an odds-aware analyst, not a guaranteed-picks machine.
 - `Vega` should emphasize freshness, source attribution, and uncertainty whenever discussing betting lines or market movement.
 - `Vega` should avoid language that implies guaranteed returns or irresponsible gambling behavior.
+- All personas should keep rivalry banter playful and avoid slurs, dehumanization, or calls for harassment.
 
 ## Task breakdown
 
