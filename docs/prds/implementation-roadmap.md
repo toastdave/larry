@@ -23,10 +23,10 @@ Status: complete for the first production-style pass.
 - Add query persistence, result ranking, and citation rendering.
 - Add routing rules for when live search is mandatory before answering.
 
-Status: functionally complete for the MVP, with ranked retrieval, structured odds/injuries coverage, and inline numbered citation references now live in chat.
+Status: functionally complete for the MVP, with ranked retrieval, structured odds/injuries coverage, line-movement metadata, and inline numbered citation references now live in chat.
 
-- Completed: Tavily web search adapter, ESPN structured scoreboard/standings adapter, ESPN structured injuries adapter, ESPN core odds adapter, persisted search traces, stronger result ranking, inline numbered citation references in the transcript, Vega stale-board guardrails for odds-oriented prompts, and deeper Scout-specific structured-result ranking
-- Remaining: richer provider-native freshness metadata
+- Completed: Tavily web search adapter, ESPN structured scoreboard/standings adapter, ESPN structured injuries adapter, ESPN core odds adapter, persisted search traces, stronger result ranking, inline numbered citation references in the transcript, Vega stale-board guardrails for odds-oriented prompts, deeper Scout-specific structured-result ranking, and provider retrieval plus line-movement metadata for odds snapshots
+- Remaining: richer provider-native board-update timestamps if the provider exposes them reliably
 
 ## Phase 4 - Multi-Persona Product Layer
 

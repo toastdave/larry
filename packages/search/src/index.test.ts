@@ -426,4 +426,120 @@ describe('search package', () => {
 
 		expect(context).toContain('Vega warning: no dedicated odds result was retrieved')
 	})
+
+	test('includes provider retrieval timing and movement notes for fresh Vega odds results', () => {
+		const retrievedAt = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+
+		const context = buildSearchPromptContext(
+			{
+				freshness: 'live',
+				league: 'NBA',
+				provider: 'espn',
+				query: 'What is the spread tonight?',
+				results: [
+					{
+						id: 'odds-1',
+						metadata: {
+							lineMovementSummary: 'Spread moved from -1.5 to -2.5',
+							retrievedAt,
+						},
+						publishedAt: retrievedAt,
+						resultType: 'odds',
+						snippet: 'ORL -2.5. Total 225.5.',
+						sourceName: 'Draft Kings odds',
+						title: 'Orlando Magic at Atlanta Hawks odds snapshot',
+						url: 'https://www.espn.com/basketball/nba/scoreboard',
+					},
+				],
+			},
+			{ personaSlug: 'vega' }
+		)
+
+		expect(context).toContain('retrieved from the provider at')
+		expect(context).toContain('Spread moved from -1.5 to -2.5')
+	})
+
+	test('stores movement metadata in structured odds results', async () => {
+		const mockFetch = (async (input: RequestInfo | URL) => {
+			const url = String(input)
+
+			if (url.includes('/scoreboard')) {
+				return new Response(
+					JSON.stringify({
+						events: [
+							{
+								competitions: [
+									{
+										competitors: [
+											{
+												homeAway: 'away',
+												team: { abbreviation: 'NYK', displayName: 'New York Knicks' },
+											},
+											{
+												homeAway: 'home',
+												team: { abbreviation: 'BOS', displayName: 'Boston Celtics' },
+											},
+										],
+										id: '401810954',
+										name: 'New York Knicks at Boston Celtics',
+									},
+								],
+								id: '401810954',
+							},
+						],
+					}),
+					{ status: 200 }
+				)
+			}
+
+			if (url.includes('/injuries')) {
+				return new Response(JSON.stringify({ injuries: [] }), { status: 200 })
+			}
+
+			if (url.includes('/odds?lang=en&region=us')) {
+				return new Response(
+					JSON.stringify({
+						items: [
+							{
+								awayTeamOdds: {
+									moneyLine: 110,
+									open: { moneyLine: { american: '+120' } },
+									current: { moneyLine: { american: '+110' } },
+								},
+								details: 'BOS -2.5',
+								homeTeamOdds: {
+									moneyLine: -130,
+									open: { moneyLine: { american: '-140' } },
+									current: { moneyLine: { american: '-130' } },
+								},
+								open: { pointSpread: { american: '-1.5' } },
+								current: { pointSpread: { american: '-2.5' } },
+								overOdds: -110,
+								overUnder: 225.5,
+								provider: { name: 'DraftKings' },
+								underOdds: -110,
+							},
+						],
+					}),
+					{ status: 200 }
+				)
+			}
+
+			return new Response(null, { status: 404 })
+		}) as unknown as typeof fetch
+
+		const response = await searchStructuredSportsData({
+			fetch: mockFetch,
+			provider: 'espn',
+			query: 'latest nba spread tonight for Knicks vs Celtics',
+		})
+
+		const oddsResult = response.results.find((result) => result.resultType === 'odds')
+
+		expect(oddsResult?.snippet).toContain('Spread moved from -1.5 to -2.5')
+		expect(oddsResult?.metadata?.lineMovementSummary).toBe(
+			'Spread moved from -1.5 to -2.5. Away moneyline moved from +120 to +110. Home moneyline moved from -140 to -130'
+		)
+		expect(oddsResult?.metadata?.retrievedAt).toBeDefined()
+	})
 })

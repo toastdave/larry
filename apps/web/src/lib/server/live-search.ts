@@ -124,6 +124,7 @@ export async function prepareSearchContext(input: {
 		payload: {
 			combinedProvider: response.provider,
 			conversationId: input.conversationId,
+			freshestPublishedAt: guardrails.freshestPublishedAt,
 			freshnessStatus: guardrails.freshnessStatus,
 			hasInjuryResults: guardrails.hasInjuryResults,
 			hasOddsResults: guardrails.hasOddsResults,
