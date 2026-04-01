@@ -7,17 +7,26 @@
 - Lock the Vercel AI SDK as the inference layer and wire environment-based provider config for Ollama locally and Gemini in hosted environments.
 - Ship the public shell, auth flows, and starter account and chat routes.
 
+Status: functionally complete for local, Docker, and tailnet development.
+
 ## Phase 2 - Conversations And Persistence
 
 - Implement conversation creation, message persistence, and saved history surfaces.
 - Add the initial Vercel AI SDK streaming chat endpoint and loading, success, and error states.
 - Add mobile-friendly composer and transcript layouts.
 
+Status: complete for the first production-style pass.
+
 ## Phase 3 - Live Search And Citations
 
 - Launch provider adapters for web search and structured sports data.
 - Add query persistence, result ranking, and citation rendering.
 - Add routing rules for when live search is mandatory before answering.
+
+Status: in progress.
+
+- Completed: Tavily web search adapter, ESPN structured scoreboard/standings adapter, persisted search traces, and citation pills in chat
+- Remaining: injuries and odds coverage, better result ranking, and inline numbered citations in the generated answer text
 
 ## Phase 4 - Persona And Billing
 
@@ -26,12 +35,19 @@
 - Validate subscription checkout and entitlement sync in Polar sandbox before enabling live billing.
 - Add upgrade messaging and limit states in chat.
 
+Status: partially started.
+
+- Completed: base Larry persona prompt, seeded persona profile, billing schema, seeded plans, and usage-ledger writes for search/inference
+- Remaining: live preference controls, plan enforcement, upgrade surfaces, checkout, and webhook handling
+
 ## Phase 5 - Operations And Growth
 
 - Add provider event tracing, operational runbooks, and reliability dashboards.
 - Harden provider switching, tracing, and incident handling for Ollama in local development and Gemini in hosted environments.
 - Add recap, sharing, and referral surfaces.
 - Evaluate sponsorship placements that do not degrade the primary chat loop.
+
+Status: not started beyond foundational event logging.
 
 ## Cross-cutting launch checklist
 

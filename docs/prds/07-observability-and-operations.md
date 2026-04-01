@@ -11,6 +11,13 @@ Make every retrieval and response path inspectable enough that product, support,
 - Usage logging for model and search cost
 - Runbook-ready error visibility
 
+## Current status
+
+- Completed: provider events persist for AI and search paths
+- Completed: search traces and usage-ledger rows are stored per conversation and message
+- Completed: metadata captures whether a response came from the local or hosted AI route
+- Remaining: operational runbooks, dashboarding, alerting, and explicit incident procedures for provider outages
+
 ## Requirements
 
 - Failed tool calls are inspectable after the fact.

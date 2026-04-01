@@ -11,6 +11,15 @@ Give Larry access to fresh sports facts and narrative context so time-sensitive 
 - Query normalization, result ranking, and citation formatting
 - Search query and result persistence for debugging and analytics
 
+## Current status
+
+- Completed: Tavily-backed web retrieval is wired for narrative context and breaking sports coverage
+- Completed: ESPN-backed structured retrieval is wired for scoreboards and standings
+- Completed: live-search intent triggers retrieval before answer generation on time-sensitive prompts
+- Completed: search queries, results, citations, provider events, and usage rows persist for inspection
+- Completed: assistant answers render citation pills in the transcript
+- Remaining: structured injuries and odds adapters, stronger result ranking, and inline numbered citations in answer copy
+
 ## Requirements
 
 - Larry automatically uses live retrieval for scores, schedules, standings, odds, injuries, and breaking news.
@@ -25,6 +34,8 @@ Give Larry access to fresh sports facts and narrative context so time-sensitive 
 - Persist search queries, results, and selected citations.
 - Normalize result types across article, score, standings, injury, and odds sources.
 - Add citation rendering in assistant messages.
+- Add structured injuries and odds providers or feeds.
+- Upgrade citation UX from pills-only to inline references tied to transcript content.
 
 ## Acceptance criteria
 

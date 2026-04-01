@@ -11,6 +11,13 @@ Launch a flexible account system that supports guest entry today and durable pre
 - Protected account and chat routes
 - Initial account profile surface for billing and preferences follow-on work
 
+## Current status
+
+- Completed: Better Auth is wired to Drizzle tables and SvelteKit hooks
+- Completed: sign-in, sign-up, account, and protected chat routes are live
+- Completed: OAuth providers can be toggled by environment configuration without code changes
+- Remaining: guest-mode behavior, profile editing, and billing-aware upgrade prompts
+
 ## Requirements
 
 - Users can create accounts and sign in with low friction.

@@ -11,6 +11,13 @@ Make Larry feel unmistakable: funny, biased, sharp, and barroom-conversational w
 - Guardrails for separating opinions from factual claims
 - Prompt structure that balances tone with tool discipline
 
+## Current status
+
+- Completed: the core Larry system prompt lives in `packages/ai` and is used by the AI SDK chat path
+- Completed: fallback behavior explicitly avoids inventing live facts when retrieval fails or returns nothing
+- Completed: search context can now be injected into the prompt so opinionated replies stay grounded for time-sensitive questions
+- Remaining: user-configurable team preferences in the live prompt path, rivalry hooks, and stronger safety guidance for gambling and abuse edges
+
 ## Requirements
 
 - Larry should feel entertaining on every turn.

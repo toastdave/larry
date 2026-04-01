@@ -12,6 +12,13 @@ Launch a hybrid monetization system that keeps inference costs sustainable witho
 - Checkout and webhook hooks for Polar integration
 - Polar sandbox validation before live billing is enabled
 
+## Current status
+
+- Completed: billing schema, seeded plans, entitlement primitives, and usage-ledger tables exist
+- Completed: chat inference and live retrieval both write usage rows for future plan enforcement
+- Completed: Polar sandbox workflow is documented for future integration work
+- Remaining: checkout, webhook processing, entitlement sync, plan enforcement, and upgrade messaging in-product
+
 ## Requirements
 
 - The app can distinguish free usage from paid entitlements.

@@ -11,6 +11,14 @@ Create a sports chat experience that feels conversational, fast, and personality
 - Chat shell with starter prompts and saved history hooks
 - Message part support for text, tool calls, and citations
 
+## Current status
+
+- Completed: authenticated users can create, revisit, and continue saved conversations
+- Completed: user and assistant turns persist, stream into the UI, and survive refreshes
+- Completed: chat transport now runs through the Vercel AI SDK with environment-based provider routing
+- Completed: chat UI includes starter prompts, optimistic updates, history, loading states, and saved transcript rendering
+- Remaining: richer message-part rendering, better auto-title refinement, and history search/filtering
+
 ## Requirements
 
 - Users can start and continue conversations across sessions.
