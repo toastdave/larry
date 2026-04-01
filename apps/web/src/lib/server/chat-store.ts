@@ -438,6 +438,7 @@ export async function recordSearchArtifacts(input: {
 				publishedAt: result.publishedAt?.toISOString() ?? null,
 				sourceName: result.sourceName,
 			}),
+			title: result.title,
 			searchResultId: result.id,
 			sourceName: result.sourceName,
 			url: result.url,

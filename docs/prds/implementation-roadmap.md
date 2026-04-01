@@ -23,10 +23,10 @@ Status: complete for the first production-style pass.
 - Add query persistence, result ranking, and citation rendering.
 - Add routing rules for when live search is mandatory before answering.
 
-Status: in progress.
+Status: in progress, with ranked retrieval and inline numbered citation references now live in chat.
 
-- Completed: Tavily web search adapter, ESPN structured scoreboard/standings adapter, persisted search traces, and citation pills in chat
-- Remaining: injuries and odds coverage, better result ranking, inline numbered citations in the generated answer text, and stronger freshness handling for odds-aware answers
+- Completed: Tavily web search adapter, ESPN structured scoreboard/standings adapter, persisted search traces, stronger result ranking, citation pills in chat, and inline numbered citation references in the transcript
+- Remaining: injuries and odds coverage and stronger freshness handling for odds-aware answers
 
 ## Phase 4 - Multi-Persona Product Layer
 

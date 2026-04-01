@@ -1,5 +1,6 @@
 <script lang="ts">
 import { goto } from '$app/navigation'
+import { formatCitationReferenceLabel, splitMessageForCitations } from '$lib/chat/citation-text'
 import {
 	type SportsPersona,
 	type SportsPersonaSlug,
@@ -66,6 +67,10 @@ function getPersonaDetails(personaSlug: string | null | undefined) {
 
 function getMessageLabel(message: ChatMessage) {
 	return message.role === 'assistant' ? currentPersona.name : 'You'
+}
+
+function getMessageContentParts(message: ChatMessage) {
+	return splitMessageForCitations(message.contentText, message.citations)
 }
 
 function upsertConversation(nextConversation: ConversationEntry) {
@@ -388,18 +393,45 @@ function handleSubmit(event: SubmitEvent) {
 			<div class="space-y-4 pt-5">
 				{#if messages.length > 0}
 					{#each messages as message, index (message.id)}
+						{@const contentParts = getMessageContentParts(message)}
 						<div class={`max-w-3xl rounded-[1.5rem] px-5 py-4 text-sm leading-7 ${message.role === 'user' ? 'ml-auto bg-ink-950 text-cream-100' : 'border border-ink-950/10 bg-cream-100/80 text-ink-900'}`}>
 							<p class="text-xs uppercase tracking-[0.24em] opacity-70">
 								{getMessageLabel(message)} · {formatUpdatedAt(message.createdAt)}
 							</p>
-							<p class="mt-2 whitespace-pre-wrap">{message.contentText}</p>
+							<p class="mt-2 whitespace-pre-wrap break-words">
+								{#each contentParts as part (part.id)}
+									{#if part.type === 'citation'}
+										<a
+											aria-label={part.label}
+											class="font-semibold text-redline-500 underline decoration-redline-500/35 underline-offset-3 transition hover:text-redline-600"
+											href={part.url}
+											rel="noreferrer"
+											target="_blank"
+										>
+											[{part.number}]
+										</a>
+									{:else}
+										<span>{part.value}</span>
+									{/if}
+								{/each}
+							</p>
 							{#if message.role === 'assistant' && message.citations.length > 0}
 								<div class="mt-4 rounded-2xl border border-ink-950/10 bg-white/65 p-4 text-xs text-ink-700">
 									<p class="uppercase tracking-[0.24em] text-ink-700/65">Citations</p>
-									<div class="mt-3 flex flex-wrap gap-2">
-										{#each message.citations as citation (citation.id)}
-											<a class="rounded-full border border-ink-950/10 bg-cream-100 px-3 py-2 transition hover:border-redline-500/40 hover:bg-white" href={citation.url} rel="noreferrer" target="_blank">
-												{citation.label}
+									<div class="mt-3 grid gap-2 sm:grid-cols-2">
+										{#each message.citations as citation, citationIndex (citation.id)}
+											<a class="flex items-start gap-3 rounded-[1.1rem] border border-ink-950/10 bg-cream-100 px-3 py-3 transition hover:border-redline-500/40 hover:bg-white" href={citation.url} rel="noreferrer" target="_blank">
+												<span class="mt-0.5 flex h-6 min-w-6 items-center justify-center rounded-full bg-ink-950 text-[10px] font-semibold uppercase tracking-[0.2em] text-cream-100">
+													{citationIndex + 1}
+												</span>
+												<span class="leading-5">
+													<span class="block font-semibold text-ink-900">
+														{formatCitationReferenceLabel(citationIndex, citation)}
+													</span>
+													<span class="mt-1 block text-[11px] uppercase tracking-[0.2em] text-ink-700/70">
+														{citation.sourceName}
+													</span>
+												</span>
 											</a>
 										{/each}
 									</div>

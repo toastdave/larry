@@ -20,7 +20,8 @@ Create a sports chat experience that feels conversational, fast, and personality
 - Completed: chat transport now runs through the Vercel AI SDK with environment-based provider routing
 - Completed: chat UI includes starter prompts, optimistic updates, history, loading states, and saved transcript rendering
 - Completed: users can start fresh conversations with Larry, Scout, or Vega and keep that persona attached to the thread
-- Remaining: richer message-part rendering, better auto-title refinement, and history search/filtering
+- Completed: assistant answers now support inline numbered citation references alongside transcript source cards
+- Remaining: better auto-title refinement and history search/filtering
 
 ## Requirements
 

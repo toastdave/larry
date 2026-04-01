@@ -20,7 +20,9 @@ Give Larry, Scout, and Vega access to fresh sports facts and narrative context s
 - Completed: live-search intent triggers retrieval before answer generation on time-sensitive prompts
 - Completed: search queries, results, citations, provider events, and usage rows persist for inspection
 - Completed: assistant answers render citation pills in the transcript
-- Remaining: structured injuries and odds adapters, stronger result ranking, inline numbered citations in answer copy, and persona-specific freshness behavior for analytical and odds-aware answers
+- Completed: merged search results now rank structured live facts ahead of less-relevant narrative coverage for time-sensitive prompts
+- Completed: retrieved answers can reference inline numbered citations that map to transcript sources
+- Remaining: structured injuries and odds adapters and persona-specific freshness behavior for analytical and odds-aware answers
 
 ## Requirements
 

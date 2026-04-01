@@ -1,12 +1,36 @@
 import {
 	type CitationKind,
+	type NormalizedSearchResult,
 	type SearchResponse,
 	buildSearchPromptContext,
+	formatCitationLabel,
+	inferCitationKind,
 	mergeSearchResponses,
 	searchSportsWeb,
 	searchStructuredSportsData,
 } from '@larry/search'
 import { recordModelProviderEvent, recordSearchArtifacts } from './chat-store'
+
+function toCitationLookupKey(input: {
+	sourceName: string
+	title: string
+	url: string
+}) {
+	return `${input.sourceName}::${input.title}::${input.url}`.toLowerCase()
+}
+
+function toFallbackCitation(result: NormalizedSearchResult) {
+	return {
+		citedText: result.snippet,
+		kind: inferCitationKind(result.resultType),
+		label: formatCitationLabel({
+			publishedAt: result.publishedAt ?? null,
+			sourceName: result.sourceName,
+		}),
+		sourceName: result.sourceName,
+		url: result.url,
+	}
+}
 
 export type PreparedSearchContext = {
 	citations: Array<{
@@ -65,8 +89,29 @@ export async function prepareSearchContext(input: {
 	])
 
 	const response = mergeSearchResponses(sportsDataResponse, webResponse)
+	const storedCitations = [...sportsDataStored.results, ...webStored.results]
+	const citationLookup = new Map(
+		storedCitations.map((citation) => [
+			toCitationLookupKey({
+				sourceName: citation.sourceName,
+				title: citation.title,
+				url: citation.url,
+			}),
+			citation,
+		])
+	)
 
-	const citations = [...sportsDataStored.results, ...webStored.results].slice(0, 4)
+	const citations = response.results.slice(0, 4).map((result) => {
+		return (
+			citationLookup.get(
+				toCitationLookupKey({
+					sourceName: result.sourceName,
+					title: result.title,
+					url: result.url,
+				})
+			) ?? toFallbackCitation(result)
+		)
+	})
 
 	await recordModelProviderEvent({
 		payload: {

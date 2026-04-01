@@ -5,6 +5,7 @@ import {
 	inferCitationKind,
 	inferLeague,
 	mergeSearchResponses,
+	rankSearchResults,
 	requiresFreshSearch,
 	searchSportsWeb,
 	searchStructuredSportsData,
@@ -52,6 +53,9 @@ describe('search package', () => {
 		expect(response.results).toHaveLength(1)
 		expect(response.results[0]?.sourceName).toBe('espn.com')
 		expect(buildSearchPromptContext(response)).toContain('Live sports context is available')
+		expect(buildSearchPromptContext(response)).toContain(
+			'cite it inline with bracketed result numbers'
+		)
 	})
 
 	test('returns a warning when no search key exists', async () => {
@@ -140,6 +144,33 @@ describe('search package', () => {
 		)
 
 		expect(merged.results).toHaveLength(2)
+		expect(merged.results[0]?.resultType).toBe('scoreboard')
 		expect(buildSearchPromptContext(merged)).toContain('Live sports context is available')
+	})
+
+	test('ranks live scoreboard results ahead of narrative articles for score queries', () => {
+		const ranked = rankSearchResults('latest nba score tonight', [
+			{
+				id: 'web-1',
+				metadata: { score: 0.82 },
+				publishedAt: '2026-03-29T23:00:00.000Z',
+				resultType: 'article',
+				snippet: 'A gamer recap from the arena.',
+				sourceName: 'espn.com',
+				title: 'Celtics finish strong against Knicks',
+				url: 'https://www.espn.com/nba/story/_/id/1/celtics-finish-strong',
+			},
+			{
+				id: 'structured-1',
+				publishedAt: '2026-03-29T22:00:00.000Z',
+				resultType: 'scoreboard',
+				snippet: 'BOS 109 at NYK 101. Final.',
+				sourceName: 'ESPN scoreboard',
+				title: 'Boston Celtics at New York Knicks',
+				url: 'https://www.espn.com/nba/scoreboard',
+			},
+		])
+
+		expect(ranked[0]?.resultType).toBe('scoreboard')
 	})
 })

@@ -26,6 +26,8 @@ export type SearchResponse = {
 	warning?: string
 }
 
+type SearchIntent = 'general' | 'injury' | 'odds' | 'scoreboard' | 'standings'
+
 type EspnCompetition = {
 	competitors?: Array<{
 		homeAway?: 'away' | 'home'
@@ -153,6 +155,161 @@ function leagueToEspnPath(league: SupportedLeague) {
 function prefersStandings(query: string) {
 	const value = query.toLowerCase()
 	return value.includes('standing') || value.includes('playoff picture') || value.includes('table')
+}
+
+function inferSearchIntent(query: string): SearchIntent {
+	const value = query.toLowerCase()
+
+	if (
+		value.includes('odds') ||
+		value.includes('spread') ||
+		value.includes('moneyline') ||
+		value.includes('line movement') ||
+		value.includes('total')
+	) {
+		return 'odds'
+	}
+
+	if (
+		value.includes('injury') ||
+		value.includes('questionable') ||
+		value.includes('lineup') ||
+		value.includes('starting lineup') ||
+		value.includes('who is out')
+	) {
+		return 'injury'
+	}
+
+	if (prefersStandings(query)) {
+		return 'standings'
+	}
+
+	if (
+		value.includes('score') ||
+		value.includes('schedule') ||
+		value.includes('today') ||
+		value.includes('tonight') ||
+		value.includes('live') ||
+		value.includes('final')
+	) {
+		return 'scoreboard'
+	}
+
+	return 'general'
+}
+
+function resultPriorityForIntent(intent: SearchIntent, resultType: SearchResultType) {
+	const priorities = {
+		general: {
+			article: 52,
+			injury: 56,
+			odds: 54,
+			scoreboard: 60,
+			standing: 58,
+		},
+		injury: {
+			article: 58,
+			injury: 92,
+			odds: 44,
+			scoreboard: 48,
+			standing: 32,
+		},
+		odds: {
+			article: 62,
+			injury: 76,
+			odds: 94,
+			scoreboard: 46,
+			standing: 28,
+		},
+		scoreboard: {
+			article: 42,
+			injury: 38,
+			odds: 34,
+			scoreboard: 96,
+			standing: 56,
+		},
+		standings: {
+			article: 40,
+			injury: 34,
+			odds: 26,
+			scoreboard: 54,
+			standing: 96,
+		},
+	} satisfies Record<SearchIntent, Record<SearchResultType, number>>
+
+	return priorities[intent][resultType]
+}
+
+function getRecencyBonus(publishedAt: string | null | undefined) {
+	if (!publishedAt) {
+		return 0
+	}
+
+	const ageInHours = Math.max(0, (Date.now() - new Date(publishedAt).getTime()) / 3_600_000)
+
+	if (ageInHours <= 6) {
+		return 12
+	}
+
+	if (ageInHours <= 24) {
+		return 8
+	}
+
+	if (ageInHours <= 72) {
+		return 4
+	}
+
+	return 1
+}
+
+function getStructuredSourceBonus(result: NormalizedSearchResult) {
+	if (result.sourceName.startsWith('ESPN ')) {
+		return 6
+	}
+
+	return 0
+}
+
+function getProviderRankingBonus(result: NormalizedSearchResult) {
+	const providerScore = result.metadata?.score
+
+	if (typeof providerScore === 'number' && Number.isFinite(providerScore)) {
+		return Math.round(providerScore * 10)
+	}
+
+	return 0
+}
+
+function getDedupedResults(results: NormalizedSearchResult[]) {
+	const seen = new Set<string>()
+
+	return results.filter((result) => {
+		const key = `${result.sourceName}::${result.title}::${result.url}`.toLowerCase()
+
+		if (seen.has(key)) {
+			return false
+		}
+
+		seen.add(key)
+		return true
+	})
+}
+
+export function rankSearchResults(query: string, results: NormalizedSearchResult[]) {
+	const intent = inferSearchIntent(query)
+
+	return getDedupedResults(results)
+		.map((result, index) => ({
+			result,
+			score:
+				resultPriorityForIntent(intent, result.resultType) +
+				getRecencyBonus(result.publishedAt) +
+				getStructuredSourceBonus(result) +
+				getProviderRankingBonus(result) +
+				Math.max(0, 5 - index),
+		}))
+		.sort((left, right) => right.score - left.score)
+		.map(({ result }) => result)
 }
 
 function buildCompetitionSnippet(competition: EspnCompetition) {
@@ -337,6 +494,7 @@ export function buildSearchPromptContext(response: SearchResponse, maxResults = 
 		'Live sports context is available for this answer.',
 		'Use the retrieved context below as the factual source of truth for time-sensitive claims.',
 		'Mention source names naturally when using a retrieved fact and do not invent live details beyond what is supported here.',
+		'When you use a retrieved fact, cite it inline with bracketed result numbers like [1] or [2][3], matching the numbered list below.',
 		...resultLines,
 	].join(' ')
 }
@@ -359,7 +517,10 @@ export function mergeSearchResponses(...responses: SearchResponse[]): SearchResp
 		league: firstResponse.league,
 		provider: responses.map((response) => response.provider).join('+'),
 		query: firstResponse.query,
-		results: responses.flatMap((response) => response.results),
+		results: rankSearchResults(
+			firstResponse.query,
+			responses.flatMap((response) => response.results)
+		),
 		warning: responses
 			.map((response) => response.warning)
 			.filter((warning): warning is string => Boolean(warning))
