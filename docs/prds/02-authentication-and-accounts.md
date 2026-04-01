@@ -16,7 +16,8 @@ Launch a flexible account system that supports guest entry today and durable pre
 - Completed: Better Auth is wired to Drizzle tables and SvelteKit hooks
 - Completed: sign-in, sign-up, account, and protected chat routes are live
 - Completed: OAuth providers can be toggled by environment configuration without code changes
-- Remaining: guest-mode behavior, profile editing, and billing-aware upgrade prompts
+- Completed: account settings now let users save favorite and rival teams for persona-aware chat context
+- Remaining: guest-mode behavior, broader profile editing, and billing-aware upgrade prompts
 
 ## Requirements
 

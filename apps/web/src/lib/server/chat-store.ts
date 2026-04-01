@@ -57,6 +57,7 @@ export type StartedConversationTurn = {
 	favoriteTeam: string | null
 	historyMessages: StoredMessage[]
 	personaSlug: SportsPersonaSlug
+	rivalTeam: string | null
 	userMessage: StoredMessage
 }
 
@@ -203,14 +204,34 @@ async function getConversationMessages(conversationId: string) {
 	}))
 }
 
-async function getFavoriteTeam(userId: string) {
-	const [favoriteTeam] = await db
-		.select({ teamName: userTeamPreference.teamName })
+async function getTeamPreferences(userId: string) {
+	const teamPreferences = await db
+		.select({ affinity: userTeamPreference.affinity, teamName: userTeamPreference.teamName })
 		.from(userTeamPreference)
-		.where(and(eq(userTeamPreference.userId, userId), eq(userTeamPreference.affinity, 'favorite')))
-		.limit(1)
+		.where(
+			and(
+				eq(userTeamPreference.userId, userId),
+				inArray(userTeamPreference.affinity, ['favorite', 'rival'])
+			)
+		)
 
-	return favoriteTeam?.teamName ?? null
+	return teamPreferences.reduce(
+		(result, preference) => {
+			if (preference.affinity === 'favorite') {
+				result.favoriteTeam = preference.teamName
+			}
+
+			if (preference.affinity === 'rival') {
+				result.rivalTeam = preference.teamName
+			}
+
+			return result
+		},
+		{ favoriteTeam: null, rivalTeam: null } as {
+			favoriteTeam: string | null
+			rivalTeam: string | null
+		}
+	)
 }
 
 async function findConversationForUser(userId: string, slug: string) {
@@ -321,16 +342,17 @@ export async function startConversationTurn(input: {
 		searchRequired: requiresFreshSearch(prompt),
 	})
 
-	const [favoriteTeam, historyMessages] = await Promise.all([
-		getFavoriteTeam(input.userId),
+	const [teamPreferences, historyMessages] = await Promise.all([
+		getTeamPreferences(input.userId),
 		getConversationMessages(activeConversation.id),
 	])
 
 	return {
 		conversation: activeConversation,
-		favoriteTeam,
+		favoriteTeam: teamPreferences.favoriteTeam,
 		historyMessages,
 		personaSlug,
+		rivalTeam: teamPreferences.rivalTeam,
 		userMessage,
 	} satisfies StartedConversationTurn
 }

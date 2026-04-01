@@ -26,6 +26,17 @@ describe('chat helpers', () => {
 		expect(reply).toContain('not going to fake fresh facts')
 	})
 
+	test('weaves rival team context into fallback copy', () => {
+		const reply = buildLocalReply({
+			favoriteTeam: 'Knicks',
+			prompt: 'Who is the biggest fraud contender in the NBA right now?',
+			rivalTeam: 'Celtics',
+		})
+
+		expect(reply).toContain('Knicks')
+		expect(reply).toContain('Celtics')
+	})
+
 	test('chunks text for streaming', () => {
 		expect(chunkTextForStreaming('one two three four five six')).toEqual([
 			'one two three four ',

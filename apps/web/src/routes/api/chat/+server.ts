@@ -124,6 +124,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 						historyCount: startedTurn.historyMessages.length,
 						personaSlug: startedTurn.personaSlug,
 						prompt,
+						rivalTeam: startedTurn.rivalTeam,
 					})
 
 					for (const chunk of chunkTextForStreaming(fallbackReply)) {
@@ -164,6 +165,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 						usage = event.usage
 					},
 					personaSlug: startedTurn.personaSlug,
+					rivalTeam: startedTurn.rivalTeam,
 					searchContext: searchContext?.promptContext,
 				})
 
@@ -221,6 +223,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 					historyCount: startedTurn.historyMessages.length,
 					personaSlug: startedTurn.personaSlug,
 					prompt,
+					rivalTeam: startedTurn.rivalTeam,
 				})
 
 				if (!responseText) {

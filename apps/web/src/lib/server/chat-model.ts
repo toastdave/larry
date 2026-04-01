@@ -62,6 +62,7 @@ export function createChatTextStream(input: {
 		usage?: unknown
 	}) => Promise<void> | void
 	personaSlug?: SportsPersonaSlug | string | null
+	rivalTeam?: string | null
 	searchContext?: string | null
 }) {
 	const route = resolveChatProviderRoute()
@@ -86,7 +87,11 @@ export function createChatTextStream(input: {
 			})
 		},
 		system: [
-			createSystemPrompt({ favoriteTeam: input.favoriteTeam, persona: input.personaSlug }),
+			createSystemPrompt({
+				favoriteTeam: input.favoriteTeam,
+				persona: input.personaSlug,
+				rivalTeam: input.rivalTeam,
+			}),
 			input.searchContext,
 		]
 			.filter(Boolean)

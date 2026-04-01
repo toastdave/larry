@@ -16,6 +16,7 @@ type ReplyOptions = {
 	historyCount?: number
 	personaSlug?: SportsPersonaSlug | string | null
 	prompt: string
+	rivalTeam?: string | null
 }
 
 function normalizeWhitespace(value: string) {
@@ -67,6 +68,7 @@ export function buildLocalReply({
 	historyCount = 0,
 	personaSlug,
 	prompt,
+	rivalTeam,
 }: ReplyOptions) {
 	const league = inferLeague(prompt) ?? 'NFL'
 	const needsFreshSearch = requiresFreshSearch(prompt)
@@ -75,6 +77,9 @@ export function buildLocalReply({
 	const fandomNudge = favoriteTeam
 		? `And because you ride with ${favoriteTeam}, I know exactly which emotional scars to poke.`
 		: 'I can already hear the barstool outrage from here.'
+	const rivalNudge = rivalTeam
+		? `And yes, I know you would enjoy seeing ${rivalTeam} eat gravel.`
+		: 'No rivalry card to play yet, so I am keeping the elbows holstered.'
 	const personaFallbackLine =
 		persona.slug === 'scout'
 			? 'Let me give you the clean version: isolate the trend, pressure-test the sample, and do not confuse a heater with a real shift.'
@@ -92,7 +97,7 @@ export function buildLocalReply({
 
 		return [
 			`${searchFallbackLead} Live search is unavailable right now, so I am not going to fake fresh facts.`,
-			`${leagueTake} ${personaFallbackLine} ${fandomNudge}`,
+			`${leagueTake} ${personaFallbackLine} ${fandomNudge} ${rivalNudge}`,
 		].join(' ')
 	}
 
@@ -106,7 +111,7 @@ export function buildLocalReply({
 
 		return [
 			'We are deep in the argument now, and I respect the commitment.',
-			`${leagueTake} ${verdictLine}`,
+			`${leagueTake} ${verdictLine} ${rivalNudge}`,
 		].join(' ')
 	}
 
@@ -124,5 +129,5 @@ export function buildLocalReply({
 				? 'If you want the honest odds angle, I need to know what the latest board says, what could move it, and whether the market is reacting to anything real.'
 				: 'If you want the polite answer, ask a spreadsheet. If you want the bar answer, I need to know who can actually handle pressure, who is living off brand reputation, and who folds the second the lights get hot.'
 
-	return [`${openingLine} ${leagueTake}`, `${closerLine} ${fandomNudge}`].join(' ')
+	return [`${openingLine} ${leagueTake}`, `${closerLine} ${fandomNudge} ${rivalNudge}`].join(' ')
 }

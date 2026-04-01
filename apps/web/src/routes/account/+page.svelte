@@ -1,17 +1,26 @@
 <script lang="ts">
 import { goto, invalidateAll } from '$app/navigation'
 import { authClient } from '$lib/auth-client'
-import type { PageData } from './$types'
+import type { ActionData, PageData } from './$types'
 
-const { data } = $props<{ data: PageData }>()
+const { data, form } = $props<{ data: PageData; form: ActionData | null }>()
 
 let errorMessage = $state('')
 let isSigningOut = $state(false)
 
+const favoriteLeague = $derived(
+	form?.values?.favoriteLeague ?? data.preferences.favorite?.league ?? ''
+)
+const favoriteTeam = $derived(
+	form?.values?.favoriteTeam ?? data.preferences.favorite?.teamName ?? ''
+)
+const rivalLeague = $derived(form?.values?.rivalLeague ?? data.preferences.rival?.league ?? '')
+const rivalTeam = $derived(form?.values?.rivalTeam ?? data.preferences.rival?.teamName ?? '')
+
 const accountReadiness = [
 	'Auth and protected routes',
 	'Hybrid billing tables and seeded plans',
-	'Favorite-team preference schema',
+	'Favorite and rival team preference controls',
 	'Usage ledger for inference and search cost tracking',
 ]
 
@@ -65,12 +74,81 @@ async function signOut() {
 					<p class="mt-2 text-sm font-semibold text-ink-950">{new Date(data.session.expiresAt).toLocaleString()}</p>
 				</div>
 			</div>
+
+			<form action="?/savePreferences" class="mt-8 rounded-[1.75rem] border border-ink-950/10 bg-cream-100/70 p-5" method="POST">
+				<div class="flex flex-wrap items-start justify-between gap-3">
+					<div>
+						<p class="text-xs uppercase tracking-[0.24em] text-ink-700/70">Fandom wiring</p>
+						<h2 class="mt-2 text-xl font-semibold text-ink-950">Tell Larry who gets the heart and who gets the smoke.</h2>
+						<p class="mt-2 max-w-2xl text-sm leading-7 text-ink-700">
+							These preferences feed the live prompt path for Larry, Scout, and Vega so the app knows your side of the rivalry before it starts talking.
+						</p>
+					</div>
+					<button class="rounded-full bg-ink-950 px-5 py-3 text-sm font-semibold text-cream-100" type="submit">
+						Save preferences
+					</button>
+				</div>
+
+				<div class="mt-6 grid gap-4 lg:grid-cols-2">
+					<div class="rounded-[1.5rem] border border-ink-950/8 bg-white/80 p-4">
+						<p class="text-xs uppercase tracking-[0.24em] text-ink-700/70">Favorite team</p>
+						<label class="mt-4 block text-xs uppercase tracking-[0.22em] text-ink-700/70" for="favoriteLeague">
+							League
+						</label>
+						<select class="mt-2 w-full rounded-2xl border border-ink-950/10 bg-cream-100/45 px-4 py-3 text-sm text-ink-950 outline-none transition focus:border-redline-500" id="favoriteLeague" name="favoriteLeague">
+							<option selected={favoriteLeague === ''} value="">Pick a league</option>
+							{#each data.leagueOptions as league (league)}
+								<option selected={favoriteLeague === league} value={league}>{league}</option>
+							{/each}
+						</select>
+						<label class="mt-4 block text-xs uppercase tracking-[0.22em] text-ink-700/70" for="favoriteTeam">
+							Team name
+						</label>
+						<input class="mt-2 w-full rounded-2xl border border-ink-950/10 bg-cream-100/45 px-4 py-3 text-sm text-ink-950 outline-none transition focus:border-redline-500" id="favoriteTeam" name="favoriteTeam" placeholder="New York Knicks" value={favoriteTeam} />
+						<p class="mt-3 text-xs leading-6 text-ink-700/70">Leave both fields blank if you want Larry neutral on your side.</p>
+						{#if form?.fieldErrors?.favorite}
+							<p class="mt-3 rounded-2xl border border-redline-500/20 bg-redline-500/10 px-4 py-3 text-sm text-redline-500">
+								{form.fieldErrors.favorite}
+							</p>
+						{/if}
+					</div>
+
+					<div class="rounded-[1.5rem] border border-ink-950/8 bg-white/80 p-4">
+						<p class="text-xs uppercase tracking-[0.24em] text-ink-700/70">Rival team</p>
+						<label class="mt-4 block text-xs uppercase tracking-[0.22em] text-ink-700/70" for="rivalLeague">
+							League
+						</label>
+						<select class="mt-2 w-full rounded-2xl border border-ink-950/10 bg-cream-100/45 px-4 py-3 text-sm text-ink-950 outline-none transition focus:border-redline-500" id="rivalLeague" name="rivalLeague">
+							<option selected={rivalLeague === ''} value="">Pick a league</option>
+							{#each data.leagueOptions as league (league)}
+								<option selected={rivalLeague === league} value={league}>{league}</option>
+							{/each}
+						</select>
+						<label class="mt-4 block text-xs uppercase tracking-[0.22em] text-ink-700/70" for="rivalTeam">
+							Team name
+						</label>
+						<input class="mt-2 w-full rounded-2xl border border-ink-950/10 bg-cream-100/45 px-4 py-3 text-sm text-ink-950 outline-none transition focus:border-redline-500" id="rivalTeam" name="rivalTeam" placeholder="Boston Celtics" value={rivalTeam} />
+						<p class="mt-3 text-xs leading-6 text-ink-700/70">Give Larry a rivalry target and Scout or Vega will still keep the facts clean.</p>
+						{#if form?.fieldErrors?.rival}
+							<p class="mt-3 rounded-2xl border border-redline-500/20 bg-redline-500/10 px-4 py-3 text-sm text-redline-500">
+								{form.fieldErrors.rival}
+							</p>
+						{/if}
+					</div>
+				</div>
+
+				{#if form?.message}
+					<p class={`mt-4 rounded-2xl px-4 py-3 text-sm ${form.fieldErrors?.favorite || form.fieldErrors?.rival ? 'border border-redline-500/20 bg-redline-500/10 text-redline-500' : 'border border-field-500/20 bg-field-500/10 text-field-700'}`}>
+						{form.message}
+					</p>
+				{/if}
+			</form>
 		</div>
 
 		<div class="rounded-[2rem] border border-ink-950/10 bg-white/85 p-8 shadow-[0_24px_90px_-54px_rgba(8,23,17,0.55)] backdrop-blur">
 			<p class="text-sm uppercase tracking-[0.28em] text-redline-500">What is ready now</p>
 			<ul class="mt-5 space-y-3 text-sm leading-7 text-ink-700">
-				{#each accountReadiness as item}
+				{#each accountReadiness as item (item)}
 					<li>{item}</li>
 				{/each}
 			</ul>
@@ -81,6 +159,24 @@ async function signOut() {
 					Subscriptions handle predictable access while usage records keep overages and future credit
 					packs honest.
 				</p>
+			</div>
+
+			<div class="mt-5 rounded-2xl bg-white/80 p-5">
+				<p class="text-sm font-semibold text-ink-950">Current fandom settings</p>
+				<div class="mt-3 grid gap-3 sm:grid-cols-2">
+					<div class="rounded-2xl border border-ink-950/8 bg-cream-100/75 px-4 py-4">
+						<p class="text-xs uppercase tracking-[0.24em] text-ink-700/70">Favorite</p>
+						<p class="mt-2 text-sm font-semibold text-ink-950">
+							{data.preferences.favorite ? `${data.preferences.favorite.teamName} (${data.preferences.favorite.league})` : 'Not set'}
+						</p>
+					</div>
+					<div class="rounded-2xl border border-ink-950/8 bg-cream-100/75 px-4 py-4">
+						<p class="text-xs uppercase tracking-[0.24em] text-ink-700/70">Rival</p>
+						<p class="mt-2 text-sm font-semibold text-ink-950">
+							{data.preferences.rival ? `${data.preferences.rival.teamName} (${data.preferences.rival.league})` : 'Not set'}
+						</p>
+					</div>
+				</div>
 			</div>
 
 			<div class="mt-8 flex flex-wrap gap-3">

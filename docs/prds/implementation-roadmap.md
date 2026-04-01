@@ -38,8 +38,8 @@ Status: in progress, with ranked retrieval and inline numbered citation referenc
 
 Status: partially started.
 
-- Completed: base Larry persona prompt, seeded persona profile, billing schema, seeded plans, usage-ledger writes for search/inference, runtime persona selection, conversation persona persistence, and persona-aware chat UX
-- Remaining: live preference controls, rivalry hooks, and stronger betting-adjacent guardrails
+- Completed: base Larry persona prompt, seeded persona profile, billing schema, seeded plans, usage-ledger writes for search/inference, runtime persona selection, conversation persona persistence, persona-aware chat UX, and account-driven favorite/rival team context in the live prompt path
+- Remaining: stronger betting-adjacent guardrails
 
 ## Phase 5 - Billing, Packaging, And Growth
 

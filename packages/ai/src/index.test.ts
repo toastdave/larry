@@ -16,9 +16,14 @@ describe('ai package', () => {
 	})
 
 	test('builds a system prompt with team context', () => {
-		const prompt = createSystemPrompt({ favoriteTeam: 'Knicks', billingTier: 'pro' })
+		const prompt = createSystemPrompt({
+			billingTier: 'pro',
+			favoriteTeam: 'Knicks',
+			rivalTeam: 'Celtics',
+		})
 
 		expect(prompt).toContain('Knicks')
+		expect(prompt).toContain('Celtics')
 		expect(prompt).toContain('pro')
 	})
 
