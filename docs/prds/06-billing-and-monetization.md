@@ -18,7 +18,8 @@ Launch a hybrid monetization system that keeps inference costs sustainable witho
 - Completed: chat inference and live retrieval both write usage rows for future plan enforcement
 - Completed: Polar sandbox workflow is documented for future integration work
 - Completed: account and chat now surface seeded-plan usage, current entitlement state, and upgrade messaging in-product
-- Remaining: checkout, webhook processing, entitlement sync, plan enforcement, and any final decision on persona-based packaging
+- Completed: Polar sandbox checkout routes, return-state sync, and webhook entitlement syncing are now wired into the app
+- Remaining: hard plan enforcement and any final decision on persona-based packaging
 
 ## Requirements
 

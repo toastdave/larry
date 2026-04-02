@@ -179,6 +179,9 @@ Use the full `https://` URL. This setup serves HTTPS on port `1501`; `http://` r
 - `POLAR_ACCESS_TOKEN` is used for Polar API access.
 - `POLAR_WEBHOOK_SECRET` validates webhook deliveries.
 - `POLAR_SERVER` should stay on `sandbox` until subscription checkout and entitlement sync are verified end-to-end.
+- `POLAR_PRODUCT_ID_PRO` maps the in-app Pro upgrade button to a Polar sandbox product.
+- `POLAR_PRODUCT_ID_PULSE` maps the in-app Pulse upgrade button to a Polar sandbox product.
+- Polar webhook deliveries should target `/api/billing/polar`.
 
 ## Billing environments
 

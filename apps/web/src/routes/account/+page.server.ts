@@ -1,6 +1,11 @@
 import { loadBillingSnapshotForUser } from '$lib/server/billing'
 import { db } from '$lib/server/db'
 import {
+	getAvailableCheckoutPaths,
+	isPolarCheckoutEnabled,
+	syncPolarCheckoutForUser,
+} from '$lib/server/polar'
+import {
 	parseTeamPreferenceInput,
 	readTeamPreferenceFormValues,
 } from '$lib/server/team-preferences'
@@ -10,12 +15,48 @@ import { fail, redirect } from '@sveltejs/kit'
 import { and, eq, inArray } from 'drizzle-orm'
 import type { Actions, PageServerLoad } from './$types'
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!locals.user || !locals.session) {
 		throw redirect(303, '/auth/sign-in?redirectTo=/account')
 	}
 
 	const userId = locals.user.id
+	let checkoutNotice: { message: string; tone: 'error' | 'success' | 'warning' } | null = null
+
+	if (url.searchParams.get('checkout') === 'success') {
+		const checkoutId = url.searchParams.get('checkout_id')
+
+		if (!checkoutId) {
+			checkoutNotice = {
+				message: 'Polar redirected back, but the checkout session ID was missing.',
+				tone: 'warning',
+			}
+		} else {
+			try {
+				const checkout = await syncPolarCheckoutForUser({ checkoutId, userId })
+
+				checkoutNotice =
+					checkout.status === 'succeeded'
+						? {
+								message:
+									'Sandbox checkout succeeded and your entitlement snapshot has been synced.',
+								tone: 'success',
+							}
+						: {
+								message: `Sandbox checkout returned with status ${checkout.status}. If Polar is still finishing the order, refresh in a moment.`,
+								tone: 'warning',
+							}
+			} catch (error) {
+				checkoutNotice = {
+					message:
+						error instanceof Error
+							? error.message
+							: 'Unable to sync the Polar checkout return yet.',
+					tone: 'error',
+				}
+			}
+		}
+	}
 
 	const [billing, teamPreferences] = await Promise.all([
 		loadBillingSnapshotForUser(userId),
@@ -40,7 +81,10 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	return {
 		billing,
+		checkoutLinks: getAvailableCheckoutPaths(),
+		checkoutNotice,
 		leagueOptions: supportedLeagues,
+		polarCheckoutEnabled: isPolarCheckoutEnabled(),
 		preferences: {
 			favorite: favoriteTeam,
 			rival: rivalTeam,

@@ -54,10 +54,10 @@ Status note: chat history search, persona filtering, and cleaner auto-title refi
 - Add recap, sharing, and referral surfaces.
 - Evaluate sponsorship placements that do not degrade the primary chat loop.
 
-Status: partially started with seeded-plan usage summaries and upgrade messaging now visible in account and chat.
+Status: partially started with seeded-plan usage summaries, upgrade messaging, Polar sandbox checkout routes, and entitlement sync now visible in account and chat.
 
-- Completed: seeded plans, entitlement primitives, usage-ledger writes, account-level billing summary, and chat/account upgrade messaging
-- Remaining: checkout, webhook processing, entitlement sync, plan enforcement, and product packaging decisions for premium personas
+- Completed: seeded plans, entitlement primitives, usage-ledger writes, account-level billing summary, chat/account upgrade messaging, Polar sandbox checkout routes, and webhook/return-based entitlement sync
+- Remaining: hard plan enforcement and product packaging decisions for premium personas
 
 ## Cross-cutting launch checklist
 

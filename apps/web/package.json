@@ -20,6 +20,7 @@
 		"@larry/ai": "workspace:*",
 		"@larry/db": "workspace:*",
 		"@larry/search": "workspace:*",
+		"@polar-sh/sdk": "^0.46.7",
 		"better-auth": "^1.5.5",
 		"drizzle-orm": "^0.44.6"
 	},

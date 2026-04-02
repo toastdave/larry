@@ -18,6 +18,7 @@ Launch a flexible account system that supports guest entry today and durable pre
 - Completed: OAuth providers can be toggled by environment configuration without code changes
 - Completed: account settings now let users save favorite and rival teams for persona-aware chat context
 - Completed: account now shows current entitlement state, monthly usage, and plan-upgrade messaging from the seeded billing model
+- Completed: account now exposes Polar sandbox checkout entry points and return-state messaging for billing flows
 - Remaining: guest-mode behavior and broader profile editing
 
 ## Requirements

@@ -464,7 +464,7 @@ function handleSubmit(event: SubmitEvent) {
 					</p>
 					{#if data.billing.nextPlan}
 						<p class="mt-2">
-							Need more runway? {data.billing.nextPlan.name} steps up to {data.billing.nextPlan.monthlyIncludedMessages} messages and {data.billing.nextPlan.monthlyIncludedSearches} live lookups. <a class="font-semibold underline underline-offset-3" href="/account#billing">See upgrade details</a>.
+							Need more runway? {data.billing.nextPlan.name} steps up to {data.billing.nextPlan.monthlyIncludedMessages} messages and {data.billing.nextPlan.monthlyIncludedSearches} live lookups. <a class="font-semibold underline underline-offset-3" href={data.billingUpgradePath ?? '/account#billing'}>{data.billingUpgradePath ? 'Open sandbox checkout' : 'See upgrade details'}</a>.
 						</p>
 					{/if}
 				</div>

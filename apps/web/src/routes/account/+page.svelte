@@ -25,6 +25,18 @@ const accountReadiness = [
 	'Usage ledger for inference and search cost tracking',
 ]
 
+function getCheckoutLink(planSlug: string) {
+	if (planSlug === 'pro') {
+		return data.checkoutLinks.pro
+	}
+
+	if (planSlug === 'pulse') {
+		return data.checkoutLinks.pulse
+	}
+
+	return null
+}
+
 async function signOut() {
 	isSigningOut = true
 	errorMessage = ''
@@ -154,6 +166,12 @@ async function signOut() {
 				{/each}
 			</ul>
 
+			{#if data.checkoutNotice}
+				<p class={`mt-5 rounded-2xl px-4 py-4 text-sm leading-7 ${data.checkoutNotice.tone === 'success' ? 'border border-field-500/20 bg-field-500/10 text-field-700' : data.checkoutNotice.tone === 'warning' ? 'border border-gold-400/30 bg-gold-400/10 text-ink-900' : 'border border-redline-500/20 bg-redline-500/10 text-redline-500'}`}>
+					{data.checkoutNotice.message}
+				</p>
+			{/if}
+
 			<div class="mt-8 rounded-2xl bg-cream-100/80 p-5" id="billing">
 				<div class="flex flex-wrap items-start justify-between gap-3">
 					<div>
@@ -202,11 +220,17 @@ async function signOut() {
 				</div>
 
 				{#if data.billing.nextPlan}
+					{@const nextPlanCheckoutLink = getCheckoutLink(data.billing.nextPlan.slug)}
 					<div class="mt-4 rounded-2xl border border-field-500/20 bg-field-500/10 px-4 py-4 text-sm text-field-700">
 						<p class="font-semibold text-ink-950">Upgrade prompt</p>
 						<p class="mt-2 leading-7">
-							If you are leaning on live game-day chat, {data.billing.nextPlan.name} gives you {data.billing.nextPlan.monthlyIncludedMessages} messages and {data.billing.nextPlan.monthlyIncludedSearches} live lookups per month. Checkout is the next billing milestone, but the entitlement shape is ready now.
+							If you are leaning on live game-day chat, {data.billing.nextPlan.name} gives you {data.billing.nextPlan.monthlyIncludedMessages} messages and {data.billing.nextPlan.monthlyIncludedSearches} live lookups per month. Sandbox checkout is wired now, and plan enforcement is the next billing milestone.
 						</p>
+						{#if nextPlanCheckoutLink}
+							<a class="mt-3 inline-flex rounded-full bg-ink-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-cream-100" href={nextPlanCheckoutLink}>
+								Start sandbox checkout
+							</a>
+						{/if}
 					</div>
 				{/if}
 			</div>
@@ -215,6 +239,7 @@ async function signOut() {
 				<p class="text-sm font-semibold text-ink-950">Plan lineup</p>
 				<div class="mt-4 grid gap-3 lg:grid-cols-3">
 					{#each data.billing.plans as planOption (planOption.id)}
+						{@const checkoutLink = getCheckoutLink(planOption.slug)}
 						<div class={`rounded-2xl border px-4 py-4 ${planOption.id === data.billing.currentPlan.id ? 'border-ink-950 bg-ink-950 text-cream-100' : 'border-ink-950/8 bg-cream-100/75 text-ink-950'}`}>
 							<div class="flex items-start justify-between gap-3">
 								<div>
@@ -239,6 +264,21 @@ async function signOut() {
 									</span>
 								{/each}
 							</div>
+							{#if planOption.id !== data.billing.currentPlan.id}
+								{#if checkoutLink}
+									<a class="mt-4 inline-flex rounded-full bg-ink-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-cream-100" href={checkoutLink}>
+										Start sandbox checkout
+									</a>
+								{:else if data.polarCheckoutEnabled}
+									<p class={`mt-4 text-xs uppercase tracking-[0.22em] ${planOption.id === data.billing.currentPlan.id ? 'text-cream-100/70' : 'text-ink-700/70'}`}>
+										No Polar product mapped yet
+									</p>
+								{:else}
+									<p class={`mt-4 text-xs uppercase tracking-[0.22em] ${planOption.id === data.billing.currentPlan.id ? 'text-cream-100/70' : 'text-ink-700/70'}`}>
+										Polar sandbox not configured
+									</p>
+								{/if}
+							{/if}
 						</div>
 					{/each}
 				</div>
