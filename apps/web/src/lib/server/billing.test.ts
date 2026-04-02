@@ -1,9 +1,11 @@
 import { describe, expect, test } from 'bun:test'
 import {
+	assessChatUsageGate,
 	formatPlanPrice,
 	getRecommendedUpgrade,
 	humanizeFeatureFlag,
 	summarizeUsage,
+	tallyUsageEntries,
 } from '$lib/billing'
 
 const plans = [
@@ -52,6 +54,45 @@ describe('billing helpers', () => {
 			used: 34,
 			usageRatio: 0.85,
 			warningLevel: 'watch',
+		})
+	})
+
+	test('counts live lookups per search query instead of result rows', () => {
+		expect(
+			tallyUsageEntries([
+				{ entryType: 'inference', units: 1 },
+				{ entryType: 'search', units: 6 },
+				{ entryType: 'search', units: 3 },
+			])
+		).toEqual({
+			messages: 1,
+			searches: 2,
+		})
+	})
+
+	test('blocks chat when the monthly message cap is exhausted', () => {
+		expect(
+			assessChatUsageGate({
+				messages: summarizeUsage({ included: 40, label: 'messages', used: 40 }),
+				requiresSearch: false,
+				searches: summarizeUsage({ included: 25, label: 'live lookups', used: 4 }),
+			})
+		).toEqual({
+			allowed: false,
+			reason: 'messages',
+		})
+	})
+
+	test('blocks live prompts when the monthly lookup cap is exhausted', () => {
+		expect(
+			assessChatUsageGate({
+				messages: summarizeUsage({ included: 40, label: 'messages', used: 12 }),
+				requiresSearch: true,
+				searches: summarizeUsage({ included: 25, label: 'live lookups', used: 25 }),
+			})
+		).toEqual({
+			allowed: false,
+			reason: 'searches',
 		})
 	})
 

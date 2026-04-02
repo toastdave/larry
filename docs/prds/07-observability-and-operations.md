@@ -16,6 +16,7 @@ Make every retrieval and response path inspectable enough that product, support,
 - Completed: provider events persist for AI and search paths
 - Completed: search traces and usage-ledger rows are stored per conversation and message
 - Completed: metadata captures whether a response came from the local or hosted AI route
+- Completed: billing-limit blocks now emit provider events so support can explain why a chat turn was rejected
 - Remaining: operational runbooks, dashboarding, alerting, and explicit incident procedures for provider outages
 
 ## Requirements

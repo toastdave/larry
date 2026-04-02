@@ -63,6 +63,23 @@ const billingTone = $derived(
 			? 'watch'
 			: 'healthy'
 )
+const messageLimitReached = $derived(data.billing.usage.messages.remaining <= 0)
+const searchLimitReached = $derived(data.billing.usage.searches.remaining <= 0)
+const composerBlockedReason = $derived(
+	messageLimitReached ? 'messages' : shouldSearch && searchLimitReached ? 'searches' : null
+)
+const composerBlockedMessage = $derived(
+	composerBlockedReason === 'messages'
+		? `${data.billing.currentPlan.name} is out of chat messages for ${data.billing.usage.windowLabel}. Upgrade or wait for the monthly reset before firing off another take.`
+		: composerBlockedReason === 'searches'
+			? `${data.billing.currentPlan.name} is out of live lookups for ${data.billing.usage.windowLabel}. This prompt needs fresh search before ${currentPersona.name} can answer it responsibly.`
+			: ''
+)
+const liveLookupSoftLimitMessage = $derived(
+	!messageLimitReached && searchLimitReached
+		? `Live lookups are tapped out for ${data.billing.usage.windowLabel}. ${currentPersona.name} can still handle non-live takes until the window resets.`
+		: ''
+)
 
 $effect(() => {
 	activeConversation = data.activeConversation
@@ -146,6 +163,11 @@ async function sendPrompt(promptOverride?: string) {
 		return
 	}
 
+	if (composerBlockedReason) {
+		errorMessage = composerBlockedMessage
+		return
+	}
+
 	errorMessage = ''
 	isSending = true
 
@@ -183,7 +205,17 @@ async function sendPrompt(promptOverride?: string) {
 			method: 'POST',
 		})
 
-		if (!response.ok || !response.body) {
+		if (!response.ok) {
+			const failurePayload = (await response.json().catch(() => null)) as {
+				message?: string
+			} | null
+
+			throw new Error(
+				failurePayload?.message ?? `Unable to get a response from ${persona.name} right now.`
+			)
+		}
+
+		if (!response.body) {
 			throw new Error(`Unable to get a response from ${persona.name} right now.`)
 		}
 
@@ -462,6 +494,13 @@ function handleSubmit(event: SubmitEvent) {
 					<p class="mt-2">
 						{data.billing.usage.messages.used}/{data.billing.usage.messages.included} messages and {data.billing.usage.searches.used}/{data.billing.usage.searches.included} live lookups used in {data.billing.usage.windowLabel}.
 					</p>
+					{#if composerBlockedReason}
+						<p class="mt-2 font-semibold">
+							{composerBlockedMessage}
+						</p>
+					{:else if liveLookupSoftLimitMessage}
+						<p class="mt-2 font-semibold">{liveLookupSoftLimitMessage}</p>
+					{/if}
 					{#if data.billing.nextPlan}
 						<p class="mt-2">
 							Need more runway? {data.billing.nextPlan.name} steps up to {data.billing.nextPlan.monthlyIncludedMessages} messages and {data.billing.nextPlan.monthlyIncludedSearches} live lookups. <a class="font-semibold underline underline-offset-3" href={data.billingUpgradePath ?? '/account#billing'}>{data.billingUpgradePath ? 'Open sandbox checkout' : 'See upgrade details'}</a>.
@@ -555,6 +594,23 @@ function handleSubmit(event: SubmitEvent) {
 				</label>
 				<textarea bind:value={draft} class="mt-3 min-h-28 w-full rounded-2xl border border-ink-950/10 bg-cream-100/45 px-4 py-3 text-sm text-ink-950 outline-none transition focus:border-redline-500" id="draft"></textarea>
 
+				{#if composerBlockedReason}
+					<div class="mt-4 rounded-2xl border border-redline-500/20 bg-redline-500/10 px-4 py-4 text-sm text-redline-500">
+						<p class="font-semibold text-ink-950">Usage limit hit</p>
+						<p class="mt-2 leading-7">{composerBlockedMessage}</p>
+						{#if data.billing.nextPlan}
+							<a class="mt-3 inline-flex rounded-full bg-ink-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-cream-100" href={data.billingUpgradePath ?? '/account#billing'}>
+								{data.billingUpgradePath ? `Upgrade to ${data.billing.nextPlan.name}` : 'Open billing details'}
+							</a>
+						{/if}
+					</div>
+				{:else if liveLookupSoftLimitMessage}
+					<div class="mt-4 rounded-2xl border border-gold-400/30 bg-gold-400/10 px-4 py-4 text-sm text-ink-900">
+						<p class="font-semibold text-ink-950">Live data is paused</p>
+						<p class="mt-2 leading-7">{liveLookupSoftLimitMessage}</p>
+					</div>
+				{/if}
+
 				{#if errorMessage}
 					<p class="mt-4 rounded-2xl border border-redline-500/20 bg-redline-500/10 px-4 py-3 text-sm text-redline-500">
 						{errorMessage}
@@ -563,12 +619,22 @@ function handleSubmit(event: SubmitEvent) {
 
 				<div class="mt-4 flex flex-wrap items-center justify-between gap-3">
 					<p class="text-sm text-ink-700">
-						{shouldSearch
+						{composerBlockedReason === 'messages'
+							? `You have spent every message in this billing window. Upgrade or wait for the reset before ${currentPersona.name} can answer again.`
+							: composerBlockedReason === 'searches'
+								? `This question needs live retrieval, but your plan has no live lookups left this month.`
+								: shouldSearch
 							? `This prompt wants live data, so ${currentPersona.name} will search first and attach sources when the provider comes through.`
 							: `${currentPersona.name} can answer this now, and the live retrieval layer stays on standby unless the question needs it.`}
 					</p>
-					<button class="rounded-full bg-ink-950 px-5 py-3 text-sm font-semibold text-cream-100 disabled:cursor-not-allowed disabled:opacity-70" disabled={isSending || !draft.trim()} type="submit">
-						{isSending ? 'Sending...' : `Send to ${currentPersona.name}`}
+					<button class="rounded-full bg-ink-950 px-5 py-3 text-sm font-semibold text-cream-100 disabled:cursor-not-allowed disabled:opacity-70" disabled={isSending || !draft.trim() || Boolean(composerBlockedReason)} type="submit">
+						{isSending
+							? 'Sending...'
+							: composerBlockedReason === 'messages'
+								? 'Monthly cap reached'
+								: composerBlockedReason === 'searches'
+									? 'Live lookup cap reached'
+									: `Send to ${currentPersona.name}`}
 					</button>
 				</div>
 			</form>

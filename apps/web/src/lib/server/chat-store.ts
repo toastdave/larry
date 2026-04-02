@@ -447,7 +447,7 @@ export async function recordSearchArtifacts(input: {
 				warning: input.warning ?? null,
 			},
 			provider: input.providerName,
-			units: Math.max(storedResults.length, 1),
+			units: 1,
 			userId: input.userId,
 		}),
 	])

@@ -1,3 +1,4 @@
+import { loadChatBillingAccessForUser } from '$lib/server/billing'
 import {
 	assessPromptSafety,
 	buildLocalReply,
@@ -11,7 +12,8 @@ import {
 	startConversationTurn,
 } from '$lib/server/chat-store'
 import { prepareSearchContext, recordSearchFailure } from '$lib/server/live-search'
-import { error } from '@sveltejs/kit'
+import { getCheckoutPathForPlan } from '$lib/server/polar'
+import { error, json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
 
 type ChatRequest = {
@@ -73,6 +75,38 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
 	if (!prompt) {
 		throw error(400, 'Prompt is required.')
+	}
+
+	const billingAccess = await loadChatBillingAccessForUser({ prompt, userId })
+
+	if (!billingAccess.allowed) {
+		const upgradePath = billingAccess.nextPlan
+			? getCheckoutPathForPlan(billingAccess.nextPlan.slug)
+			: null
+
+		await recordModelProviderEvent({
+			payload: {
+				blockedReason: billingAccess.blockedReason,
+				currentPlanSlug: billingAccess.currentPlan.slug,
+				nextPlanSlug: billingAccess.nextPlan?.slug ?? null,
+				promptRequiresSearch: billingAccess.promptRequiresSearch,
+				windowLabel: billingAccess.usage.windowLabel,
+			},
+			providerKind: 'billing',
+			providerName: 'plan-enforcement',
+			referenceId: userId,
+		})
+
+		return json(
+			{
+				blockedReason: billingAccess.blockedReason,
+				code: 'billing_limit',
+				message: billingAccess.statusMessage,
+				nextPlanName: billingAccess.nextPlan?.name ?? null,
+				upgradePath,
+			},
+			{ status: 402 }
+		)
 	}
 
 	const startedTurn = await startConversationTurn({

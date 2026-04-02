@@ -21,6 +21,7 @@ const rivalTeam = $derived(form?.values?.rivalTeam ?? data.preferences.rival?.te
 const accountReadiness = [
 	'Auth and protected routes',
 	'Hybrid billing tables and seeded plans',
+	'Hard chat and live-lookup enforcement in chat',
 	'Favorite and rival team preference controls',
 	'Usage ledger for inference and search cost tracking',
 ]
@@ -224,7 +225,7 @@ async function signOut() {
 					<div class="mt-4 rounded-2xl border border-field-500/20 bg-field-500/10 px-4 py-4 text-sm text-field-700">
 						<p class="font-semibold text-ink-950">Upgrade prompt</p>
 						<p class="mt-2 leading-7">
-							If you are leaning on live game-day chat, {data.billing.nextPlan.name} gives you {data.billing.nextPlan.monthlyIncludedMessages} messages and {data.billing.nextPlan.monthlyIncludedSearches} live lookups per month. Sandbox checkout is wired now, and plan enforcement is the next billing milestone.
+							If you are leaning on live game-day chat, {data.billing.nextPlan.name} gives you {data.billing.nextPlan.monthlyIncludedMessages} messages and {data.billing.nextPlan.monthlyIncludedSearches} live lookups per month. Sandbox checkout and hard limit enforcement are both live now.
 						</p>
 						{#if nextPlanCheckoutLink}
 							<a class="mt-3 inline-flex rounded-full bg-ink-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-cream-100" href={nextPlanCheckoutLink}>

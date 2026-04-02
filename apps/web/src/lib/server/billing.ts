@@ -1,6 +1,14 @@
-import { type BillingUsageSummary, getRecommendedUpgrade, summarizeUsage } from '$lib/billing'
+import {
+	type BillingGateReason,
+	type BillingUsageSummary,
+	assessChatUsageGate,
+	getRecommendedUpgrade,
+	summarizeUsage,
+	tallyUsageEntries,
+} from '$lib/billing'
 import { db } from '$lib/server/db'
 import { plan, usageLedger, userEntitlement } from '@larry/db/schema'
+import { requiresFreshSearch } from '@larry/search'
 import { and, asc, desc, eq, gte, lt } from 'drizzle-orm'
 
 type PlanRecord = typeof plan.$inferSelect
@@ -15,6 +23,13 @@ export type BillingSnapshot = {
 		searches: BillingUsageSummary
 		windowLabel: string
 	}
+}
+
+export type ChatBillingAccess = BillingSnapshot & {
+	allowed: boolean
+	blockedReason: BillingGateReason | null
+	promptRequiresSearch: boolean
+	statusMessage: string | null
 }
 
 function getWindowRange() {
@@ -70,38 +85,62 @@ export async function loadBillingSnapshotForUser(userId: string): Promise<Billin
 	}
 
 	const currentPlan = entitlement?.plan ?? freePlan
-	const usageTotals = monthlyUsage.reduce(
-		(result, entry) => {
-			if (entry.entryType === 'inference') {
-				result.messages += entry.units
-			}
-
-			if (entry.entryType === 'search') {
-				result.searches += entry.units
-			}
-
-			return result
-		},
-		{ messages: 0, searches: 0 }
-	)
+	const usageTotals = tallyUsageEntries(monthlyUsage)
+	const usage = {
+		messages: summarizeUsage({
+			included: currentPlan.monthlyIncludedMessages,
+			label: 'messages',
+			used: usageTotals.messages,
+		}),
+		searches: summarizeUsage({
+			included: currentPlan.monthlyIncludedSearches,
+			label: 'live lookups',
+			used: usageTotals.searches,
+		}),
+		windowLabel: label,
+	}
 
 	return {
 		currentPlan,
 		entitlementStatus: entitlement?.entitlementStatus ?? 'free',
 		nextPlan: getRecommendedUpgrade(plans, currentPlan.slug),
 		plans,
-		usage: {
-			messages: summarizeUsage({
-				included: currentPlan.monthlyIncludedMessages,
-				label: 'messages',
-				used: usageTotals.messages,
-			}),
-			searches: summarizeUsage({
-				included: currentPlan.monthlyIncludedSearches,
-				label: 'live lookups',
-				used: usageTotals.searches,
-			}),
-			windowLabel: label,
-		},
+		usage,
+	}
+}
+
+export async function loadChatBillingAccessForUser(input: {
+	prompt: string
+	userId: string
+}): Promise<ChatBillingAccess> {
+	const snapshot = await loadBillingSnapshotForUser(input.userId)
+	const promptRequiresSearch = requiresFreshSearch(input.prompt)
+	const gate = assessChatUsageGate({
+		messages: snapshot.usage.messages,
+		requiresSearch: promptRequiresSearch,
+		searches: snapshot.usage.searches,
+	})
+
+	if (gate.allowed) {
+		return {
+			...snapshot,
+			allowed: true,
+			blockedReason: null,
+			promptRequiresSearch,
+			statusMessage: null,
+		}
+	}
+
+	const statusMessage =
+		gate.reason === 'messages'
+			? `${snapshot.currentPlan.name} is out of chat messages for ${snapshot.usage.windowLabel}. Upgrade or wait for the monthly reset before firing off another take.`
+			: `${snapshot.currentPlan.name} is out of live lookups for ${snapshot.usage.windowLabel}. You can still ask non-live takes, but this prompt needs fresh search before Larry can answer it responsibly.`
+
+	return {
+		...snapshot,
+		allowed: false,
+		blockedReason: gate.reason,
+		promptRequiresSearch,
+		statusMessage,
 	}
 }

@@ -8,6 +8,13 @@ export type BillingUsageSummary = {
 	warningLevel: 'healthy' | 'limit' | 'watch'
 }
 
+export type BillingGateReason = 'messages' | 'searches'
+
+export type UsageLedgerSummaryEntry = {
+	entryType: string
+	units: number
+}
+
 type PlanLike = {
 	slug: string
 }
@@ -44,6 +51,48 @@ export function summarizeUsage(input: {
 		used: input.used,
 		usageRatio,
 		warningLevel,
+	}
+}
+
+export function tallyUsageEntries(entries: UsageLedgerSummaryEntry[]) {
+	return entries.reduce(
+		(result, entry) => {
+			if (entry.entryType === 'inference') {
+				result.messages += entry.units
+			}
+
+			if (entry.entryType === 'search') {
+				result.searches += 1
+			}
+
+			return result
+		},
+		{ messages: 0, searches: 0 }
+	)
+}
+
+export function assessChatUsageGate(input: {
+	messages: BillingUsageSummary
+	requiresSearch: boolean
+	searches: BillingUsageSummary
+}) {
+	if (input.messages.remaining <= 0) {
+		return {
+			allowed: false,
+			reason: 'messages' as BillingGateReason,
+		}
+	}
+
+	if (input.requiresSearch && input.searches.remaining <= 0) {
+		return {
+			allowed: false,
+			reason: 'searches' as BillingGateReason,
+		}
+	}
+
+	return {
+		allowed: true,
+		reason: null,
 	}
 }
 
