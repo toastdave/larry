@@ -57,6 +57,8 @@ Status: complete for the current MVP pass, with pricing, packaging, growth hooks
 
 - Completed: seeded plans, entitlement primitives, usage-ledger writes, account-level billing summary, chat/account upgrade messaging, hard message and live-lookup enforcement in chat, Polar sandbox checkout routes, webhook/return-based entitlement sync, a usage-first packaging decision that keeps all personas available across plans, shareable booth invite hooks, and sponsor/disclosure guardrails for future experiments
 
+Status note: chat now includes a recap-card sharing surface so booth invites can carry the opening take, latest read, and citation context without exposing a private full transcript.
+
 ## Cross-cutting launch checklist
 
 - Every core route works on mobile and desktop.

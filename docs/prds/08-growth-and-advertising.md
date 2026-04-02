@@ -13,6 +13,7 @@ Explore growth loops and sponsorship models that support the business without po
 ## Current status
 
 - Completed: chat now supports shareable booth invite links with seeded prompts so users can pull friends into the same persona lane without exposing private history
+- Completed: chat now supports recap-card sharing so users can copy a tidy booth summary with the opening take, latest read, and source context without dumping the whole transcript
 - Completed: sponsor-surface, disclosure, and ranking-separation guardrails now live in `docs/growth/sponsorship-and-sharing.md`
 - Completed: early growth metrics are defined for sharing and future sponsor modules without touching answer ranking
 - Status note: no sponsor placements are live in-product yet, by design

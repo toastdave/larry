@@ -4,6 +4,7 @@
 
 - Persona booth invite links from chat
 - Seeded prompt sharing that preserves the selected persona without exposing private transcripts
+- Booth recap cards that package the opening take, latest read, and source context without copying the whole thread
 
 ## Acceptable sponsor surfaces
 

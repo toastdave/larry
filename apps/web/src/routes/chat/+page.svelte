@@ -84,6 +84,12 @@ const liveLookupSoftLimitMessage = $derived(
 		? `Live lookups are tapped out for ${data.billing.usage.windowLabel}. ${currentPersona.name} can still handle non-live takes until the window resets.`
 		: ''
 )
+const latestAssistantMessage = $derived(
+	[...messages].reverse().find((message) => message.role === 'assistant') ?? null
+)
+const latestUserMessage = $derived(
+	[...messages].reverse().find((message) => message.role === 'user') ?? null
+)
 const trustCueLines = $derived(
 	currentPersona.slug === 'vega'
 		? [
@@ -93,6 +99,18 @@ const trustCueLines = $derived(
 		: currentPersona.reliabilityRules
 )
 const sharePromptSeed = $derived(draft.trim() || promptSuggestions[0] || defaultDraft)
+const boothRecap = $derived({
+	citationCount: latestAssistantMessage?.citations.length ?? 0,
+	sourceNames: Array.from(
+		new Set((latestAssistantMessage?.citations ?? []).map((citation) => citation.sourceName))
+	).slice(0, 3),
+	searchMode: latestUserMessage?.searchRequired ?? shouldSearch,
+	takeaway: buildRecapSnippet(
+		latestAssistantMessage?.contentText ?? starterTranscript[1]?.content ?? ''
+	),
+	title: activeConversation?.title ?? `${currentPersona.name} booth recap`,
+	userTake: buildRecapSnippet(latestUserMessage?.contentText ?? sharePromptSeed, 120),
+})
 let lastLoadedDraft = $state('')
 let shareNotice = $state('')
 
@@ -121,6 +139,27 @@ function buildSampleSignals(persona: SportsPersona) {
 		'Auto-search live scores, standings, odds, injuries, and trades.',
 		`${persona.name} cites fresh facts when the provider comes through.`,
 	]
+}
+
+function buildRecapSnippet(value: string | null | undefined, maxLength = 220) {
+	const normalized = (value ?? '').replace(/\s+/g, ' ').trim()
+
+	if (!normalized) {
+		return 'No recap yet.'
+	}
+
+	if (normalized.length <= maxLength) {
+		return normalized
+	}
+
+	const truncated = normalized.slice(0, maxLength + 1)
+	const safeBreak = truncated.lastIndexOf(' ')
+
+	if (safeBreak > Math.floor(maxLength * 0.6)) {
+		return `${truncated.slice(0, safeBreak)}...`
+	}
+
+	return `${normalized.slice(0, maxLength)}...`
 }
 
 function formatUpdatedAt(value: string | Date | null | undefined) {
@@ -210,6 +249,32 @@ async function copyShareInvite() {
 
 	await navigator.clipboard.writeText(shareText)
 	shareNotice = `Copied a ${currentPersona.name} invite with the prompt.`
+}
+
+async function copyBoothRecap() {
+	if (typeof window === 'undefined' || !navigator.clipboard) {
+		shareNotice = 'Clipboard access is not available in this browser.'
+		return
+	}
+
+	const shareUrl = new URL(
+		buildChatSeedPath(currentPersona.slug, latestUserMessage?.contentText ?? sharePromptSeed),
+		window.location.origin
+	)
+	const recapText = [
+		`${boothRecap.title} - ${currentPersona.name}`,
+		`Opening take: ${boothRecap.userTake}`,
+		`Booth recap: ${boothRecap.takeaway}`,
+		boothRecap.searchMode
+			? boothRecap.citationCount > 0
+				? `Receipts: ${boothRecap.sourceNames.join(', ')}`
+				: 'Receipts: live-data answer pending or unavailable'
+			: 'Mode: conversational take, no live lookup required',
+		`Jump in: ${shareUrl.toString()}`,
+	].join('\n')
+
+	await navigator.clipboard.writeText(recapText)
+	shareNotice = `Copied a ${currentPersona.name} booth recap.`
 }
 
 async function startFreshWithPersona(personaSlug: SportsPersonaSlug) {
@@ -630,14 +695,42 @@ function handleSubmit(event: SubmitEvent) {
 
 				<div class="rounded-[1.35rem] border border-ink-950/10 bg-cream-100/75 px-4 py-4 text-sm leading-7 text-ink-700">
 					<p class="text-xs uppercase tracking-[0.24em] text-ink-700/70">Share the booth</p>
-					<p class="mt-2 font-semibold text-ink-950">Bring a friend into {currentPersona.name}'s lane.</p>
+					<p class="mt-2 font-semibold text-ink-950">Bring a friend into {currentPersona.name}'s lane without dumping your whole transcript.</p>
 					<p class="mt-2">
-						Share a seeded prompt without exposing your private transcript. Larry sends them into the same booth with the opening take ready.
+						Share a seeded prompt or a tidy booth recap. Larry keeps the handoff focused on the lane, the opening take, and the latest receipts instead of your full private history.
 					</p>
-					<p class="mt-3 rounded-2xl border border-ink-950/10 bg-white/80 px-4 py-3 text-sm text-ink-900">
-						{sharePromptSeed}
-					</p>
+					<div class="mt-3 rounded-2xl border border-ink-950/10 bg-white/80 p-4 text-ink-900">
+						<div class="flex flex-wrap items-start justify-between gap-3">
+							<div>
+								<p class="text-xs uppercase tracking-[0.22em] text-ink-700/70">Booth recap</p>
+								<p class="mt-2 text-sm font-semibold text-ink-950">{boothRecap.title}</p>
+							</div>
+							<span class="rounded-full border border-ink-950/10 bg-cream-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-ink-700">
+								{currentPersona.slug}
+							</span>
+						</div>
+						<p class="mt-3 text-xs uppercase tracking-[0.2em] text-ink-700/70">Opening take</p>
+						<p class="mt-2 text-sm leading-6 text-ink-900">{boothRecap.userTake}</p>
+						<p class="mt-4 text-xs uppercase tracking-[0.2em] text-ink-700/70">Latest read</p>
+						<p class="mt-2 text-sm leading-6 text-ink-900">{boothRecap.takeaway}</p>
+						<div class="mt-4 flex flex-wrap gap-2">
+							<span class="rounded-full border border-ink-950/10 bg-cream-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-ink-700">
+								{boothRecap.searchMode ? 'live-data lane' : 'opinion lane'}
+							</span>
+							<span class="rounded-full border border-ink-950/10 bg-cream-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-ink-700">
+								{boothRecap.citationCount} source{boothRecap.citationCount === 1 ? '' : 's'}
+							</span>
+							{#each boothRecap.sourceNames as sourceName (sourceName)}
+								<span class="rounded-full border border-ink-950/10 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-ink-700">
+									{sourceName}
+								</span>
+							{/each}
+						</div>
+					</div>
 					<div class="mt-4 flex flex-wrap gap-3">
+						<button class="rounded-full bg-ink-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-cream-100" onclick={() => void copyBoothRecap()} type="button">
+							Copy recap card
+						</button>
 						<button class="rounded-full bg-ink-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-cream-100" onclick={() => void copyShareLink()} type="button">
 							Copy invite link
 						</button>
