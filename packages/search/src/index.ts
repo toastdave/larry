@@ -111,10 +111,13 @@ type EspnOddsItem = {
 			pointSpread?: { american?: string }
 		}
 	}
+	boardUpdatedAt?: string
 	close?: {
 		pointSpread?: { american?: string }
 	}
+	date?: string
 	details?: string
+	displayDate?: string
 	homeTeamOdds?: {
 		close?: {
 			moneyLine?: { american?: string }
@@ -133,9 +136,11 @@ type EspnOddsItem = {
 	current?: {
 		pointSpread?: { american?: string }
 	}
+	lastUpdated?: string
 	open?: {
 		pointSpread?: { american?: string }
 	}
+	openingDate?: string
 	overOdds?: number
 	overUnder?: number
 	provider?: { name?: string }
@@ -775,6 +780,22 @@ function buildMarketLineMovementSummary(odds: EspnOddsItem) {
 		.join('. ')
 }
 
+function isValidTimestamp(value: unknown): value is string {
+	return typeof value === 'string' && !Number.isNaN(new Date(value).getTime())
+}
+
+function extractProviderBoardUpdatedAt(odds: EspnOddsItem) {
+	const candidates = [
+		odds.boardUpdatedAt,
+		odds.lastUpdated,
+		odds.displayDate,
+		odds.openingDate,
+		odds.date,
+	]
+
+	return candidates.find(isValidTimestamp) ?? null
+}
+
 function normalizeEspnOddsResults(
 	league: SupportedLeague,
 	sportPath: string,
@@ -784,6 +805,7 @@ function normalizeEspnOddsResults(
 	return eventsWithOdds.map(({ competition, event, odds }, index) => {
 		const awayTeam = competition.competitors?.find((team) => team.homeAway === 'away')
 		const homeTeam = competition.competitors?.find((team) => team.homeAway === 'home')
+		const boardUpdatedAt = extractProviderBoardUpdatedAt(odds)
 		const providerName = odds.provider?.name?.replace('DraftKings', 'Draft Kings') ?? 'ESPN odds'
 		const lineMovementSummary = buildMarketLineMovementSummary(odds)
 		const moneylineSummary = [
@@ -796,6 +818,7 @@ function normalizeEspnOddsResults(
 		return {
 			id: `${event.id ?? competition.id ?? index}-odds`,
 			metadata: {
+				boardUpdatedAt,
 				lineMovementSummary,
 				league,
 				marketSnapshot: {
@@ -816,10 +839,10 @@ function normalizeEspnOddsResults(
 				providerName,
 				retrievedAt,
 			},
-			publishedAt: retrievedAt,
+			publishedAt: boardUpdatedAt ?? retrievedAt,
 			resultType: 'odds' satisfies SearchResultType,
 			snippet: normalizeSnippet(
-				`${odds.details ?? 'Market details unavailable'}. Total ${odds.overUnder ?? 'N/A'}. ${moneylineSummary}${moneylineSummary ? '.' : ''} ${lineMovementSummary ? `${lineMovementSummary}. ` : ''}Retrieved from ${providerName} at ${new Date(retrievedAt).toLocaleString('en-US')}. Over ${odds.overOdds ?? 'N/A'}, under ${odds.underOdds ?? 'N/A'}.`
+				`${odds.details ?? 'Market details unavailable'}. Total ${odds.overUnder ?? 'N/A'}. ${moneylineSummary}${moneylineSummary ? '.' : ''} ${lineMovementSummary ? `${lineMovementSummary}. ` : ''}${boardUpdatedAt ? `Board updated by ${providerName} at ${new Date(boardUpdatedAt).toLocaleString('en-US')}. ` : ''}Retrieved from ${providerName} at ${new Date(retrievedAt).toLocaleString('en-US')}. Over ${odds.overOdds ?? 'N/A'}, under ${odds.underOdds ?? 'N/A'}.`
 			),
 			sourceName: `${providerName} odds`,
 			title: `${competition.name ?? event.name ?? event.shortName ?? 'Matchup'} odds snapshot`,
@@ -926,6 +949,10 @@ export function buildSearchPromptContext(
 	})
 
 	const topOddsResult = response.results.find((result) => result.resultType === 'odds')
+	const topOddsBoardUpdatedAt =
+		typeof topOddsResult?.metadata?.boardUpdatedAt === 'string'
+			? topOddsResult.metadata.boardUpdatedAt
+			: null
 	const topOddsRetrievedAt =
 		typeof topOddsResult?.metadata?.retrievedAt === 'string'
 			? topOddsResult.metadata.retrievedAt
@@ -955,9 +982,11 @@ export function buildSearchPromptContext(
 					? `Vega warning: the freshest market context is older than ${guardrails.stalenessWindowHours} hours. Say the board may be stale before discussing any price.`
 					: guardrails.freshnessStatus === 'unknown'
 						? 'Vega warning: market timestamps are missing or incomplete. Say that freshness is unverified before discussing any price.'
-						: topOddsRetrievedAt
-							? `Vega market snapshot: the visible board was retrieved from the provider at ${new Date(topOddsRetrievedAt).toLocaleString('en-US')}.${topOddsLineMovementSummary ? ` ${topOddsLineMovementSummary}.` : ''}`
-							: 'Vega note: keep any odds framing tied to the retrieved sources and remind the user that market prices can move fast.'
+						: topOddsBoardUpdatedAt
+							? `Vega market snapshot: the visible board was updated by the provider at ${new Date(topOddsBoardUpdatedAt).toLocaleString('en-US')}.${topOddsLineMovementSummary ? ` ${topOddsLineMovementSummary}.` : ''}`
+							: topOddsRetrievedAt
+								? `Vega market snapshot: the visible board was retrieved from the provider at ${new Date(topOddsRetrievedAt).toLocaleString('en-US')}.${topOddsLineMovementSummary ? ` ${topOddsLineMovementSummary}.` : ''}`
+								: 'Vega note: keep any odds framing tied to the retrieved sources and remind the user that market prices can move fast.'
 			: null,
 		options?.personaSlug === 'vega' && guardrails.intent === 'odds' && !guardrails.hasInjuryResults
 			? 'Vega warning: dedicated injury results were not retrieved, so say lineup context may still move the market.'

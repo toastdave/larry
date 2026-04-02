@@ -7,6 +7,7 @@ import type { PageServerLoad } from './$types'
 export const load: PageServerLoad = async ({ locals, url }) => {
 	const conversationSlug = url.searchParams.get('conversation')
 	const initialPersonaSlug = getPersonaBySlug(url.searchParams.get('persona')).slug
+	const initialDraft = url.searchParams.get('prompt')?.trim() ?? ''
 
 	if (!locals.user || !locals.session) {
 		const billing = await loadPublicBillingSnapshot()
@@ -16,6 +17,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			billing,
 			billingUpgradePath: billing.nextPlan ? getCheckoutPathForPlan(billing.nextPlan.slug) : null,
 			conversations: [],
+			initialDraft,
 			initialPersonaSlug,
 			messages: [],
 			session: null,
@@ -35,6 +37,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		billing,
 		billingUpgradePath: billing.nextPlan ? getCheckoutPathForPlan(billing.nextPlan.slug) : null,
 		conversations: chatState.conversations,
+		initialDraft,
 		initialPersonaSlug,
 		messages: chatState.messages,
 		session: locals.session,

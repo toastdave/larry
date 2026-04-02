@@ -2,6 +2,7 @@
 import { goto, invalidateAll } from '$app/navigation'
 import { authClient } from '$lib/auth-client'
 import { formatPlanPrice, humanizeFeatureFlag } from '$lib/billing'
+import { sportsPersonas } from '@larry/ai'
 import type { ActionData, PageData } from './$types'
 
 const { data, form } = $props<{ data: PageData; form: ActionData | null }>()
@@ -34,6 +35,7 @@ const accountReadiness = [
 	'Favorite and rival team preference controls',
 	'Usage ledger for inference and search cost tracking',
 ]
+const personaLineup = sportsPersonas.map((persona) => persona.name).join(', ')
 
 function getCheckoutLink(planSlug: string) {
 	if (planSlug === 'pro') {
@@ -283,6 +285,10 @@ async function signOut() {
 						</p>
 					</div>
 				</div>
+
+				<p class="mt-4 rounded-2xl border border-ink-950/8 bg-white/80 px-4 py-4 text-sm leading-7 text-ink-700">
+					All plans include the full persona lineup - {personaLineup}. Paid tiers buy more monthly runway, not a different booth.
+				</p>
 
 				{#if data.billing.nextPlan}
 					{@const nextPlanCheckoutLink = getCheckoutLink(data.billing.nextPlan.slug)}

@@ -27,7 +27,7 @@ Give Larry, Scout, and Vega access to fresh sports facts and narrative context s
 - Completed: ESPN-backed structured odds retrieval is wired for live matchup boards, with injury context merged into odds-oriented searches
 - Completed: Scout retrieval now biases harder toward structured scoreboards and standings when evidence-led answers are available
 - Completed: structured odds results now preserve provider retrieval timing and line-movement metadata for Vega-style market context
-- Remaining: richer provider-native board-update timestamps if ESPN exposes them consistently in future payloads
+- Completed: structured odds results now prefer provider-native board-update timestamps whenever ESPN exposes them, while keeping retrieval timing as the fallback freshness cue when those fields are missing
 
 ## Requirements
 

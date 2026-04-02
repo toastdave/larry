@@ -19,7 +19,9 @@ const { data }: { data: PageData } = $props()
 type ConversationEntry = NonNullable<PageData['activeConversation']>
 type ChatMessage = PageData['messages'][number]
 
-let draft = $state('Who is the biggest fraud contender in the NBA right now?')
+const defaultDraft = 'Who is the biggest fraud contender in the NBA right now?'
+
+let draft = $state(defaultDraft)
 let activeConversation = $state<PageData['activeConversation']>(null)
 let conversations = $state<PageData['conversations']>([])
 let errorMessage = $state('')
@@ -82,6 +84,17 @@ const liveLookupSoftLimitMessage = $derived(
 		? `Live lookups are tapped out for ${data.billing.usage.windowLabel}. ${currentPersona.name} can still handle non-live takes until the window resets.`
 		: ''
 )
+const trustCueLines = $derived(
+	currentPersona.slug === 'vega'
+		? [
+				...currentPersona.reliabilityRules,
+				'If the board does not expose a clean update timestamp, Vega falls back to retrieval timing and says so out loud.',
+			]
+		: currentPersona.reliabilityRules
+)
+const sharePromptSeed = $derived(draft.trim() || promptSuggestions[0] || defaultDraft)
+let lastLoadedDraft = $state('')
+let shareNotice = $state('')
 
 $effect(() => {
 	activeConversation = data.activeConversation
@@ -90,6 +103,16 @@ $effect(() => {
 	selectedPersonaSlug = getPersonaBySlug(
 		data.activeConversation?.personaSlug ?? data.initialPersonaSlug ?? defaultPersonaSlug
 	).slug
+
+	const nextInitialDraft = data.initialDraft?.trim() || ''
+
+	if (nextInitialDraft !== lastLoadedDraft) {
+		if (nextInitialDraft) {
+			draft = nextInitialDraft
+		}
+
+		lastLoadedDraft = nextInitialDraft
+	}
 })
 
 function buildSampleSignals(persona: SportsPersona) {
@@ -139,12 +162,54 @@ function resetComposer(nextDraft = '') {
 	errorMessage = ''
 }
 
-function buildSignInPath(personaSlug: SportsPersonaSlug) {
-	return `/auth/sign-in?redirectTo=${encodeURIComponent(`/chat?new=1&persona=${personaSlug}`)}`
+function buildChatSeedPath(personaSlug: SportsPersonaSlug, prompt?: string) {
+	const params = new URLSearchParams({ new: '1', persona: personaSlug })
+	const nextPrompt = prompt?.trim()
+
+	if (nextPrompt) {
+		params.set('prompt', nextPrompt)
+	}
+
+	return `/chat?${params.toString()}`
 }
 
-function buildSignUpPath(personaSlug: SportsPersonaSlug) {
-	return `/auth/sign-up?redirectTo=${encodeURIComponent(`/chat?new=1&persona=${personaSlug}`)}`
+function buildSignInPath(personaSlug: SportsPersonaSlug, prompt?: string) {
+	return `/auth/sign-in?redirectTo=${encodeURIComponent(buildChatSeedPath(personaSlug, prompt))}`
+}
+
+function buildSignUpPath(personaSlug: SportsPersonaSlug, prompt?: string) {
+	return `/auth/sign-up?redirectTo=${encodeURIComponent(buildChatSeedPath(personaSlug, prompt))}`
+}
+
+async function copyShareLink() {
+	if (typeof window === 'undefined' || !navigator.clipboard) {
+		shareNotice = 'Clipboard access is not available in this browser.'
+		return
+	}
+
+	const shareUrl = new URL(
+		buildChatSeedPath(currentPersona.slug, sharePromptSeed),
+		window.location.origin
+	)
+
+	await navigator.clipboard.writeText(shareUrl.toString())
+	shareNotice = `Copied a ${currentPersona.name} invite link.`
+}
+
+async function copyShareInvite() {
+	if (typeof window === 'undefined' || !navigator.clipboard) {
+		shareNotice = 'Clipboard access is not available in this browser.'
+		return
+	}
+
+	const shareUrl = new URL(
+		buildChatSeedPath(currentPersona.slug, sharePromptSeed),
+		window.location.origin
+	)
+	const shareText = `Debate this with ${currentPersona.name}: ${sharePromptSeed}\n${shareUrl.toString()}`
+
+	await navigator.clipboard.writeText(shareText)
+	shareNotice = `Copied a ${currentPersona.name} invite with the prompt.`
 }
 
 async function startFreshWithPersona(personaSlug: SportsPersonaSlug) {
@@ -174,7 +239,7 @@ async function sendPrompt(promptOverride?: string) {
 	}
 
 	if (isGuestMode) {
-		await goto(buildSignInPath(personaSlug))
+		await goto(buildSignInPath(personaSlug, prompt))
 		return
 	}
 
@@ -418,6 +483,18 @@ function handleSubmit(event: SubmitEvent) {
 			</div>
 
 			<div class="rounded-[1.5rem] border border-ink-950/10 bg-white/85 p-4">
+				<p class="text-sm font-semibold text-ink-950">Trust cues</p>
+				<p class="mt-2 text-sm leading-7 text-ink-700">
+					The booth changes voice, but the product rules stay strict about live facts, citations, and uncertainty.
+				</p>
+				<ul class="mt-4 space-y-3 text-sm leading-7 text-ink-700">
+					{#each trustCueLines as cue (cue)}
+						<li>{cue}</li>
+					{/each}
+				</ul>
+			</div>
+
+			<div class="rounded-[1.5rem] border border-ink-950/10 bg-white/85 p-4">
 				<div class="flex items-center justify-between gap-3">
 					<p class="text-sm font-semibold text-ink-950">Saved debates</p>
 					<a
@@ -435,10 +512,10 @@ function handleSubmit(event: SubmitEvent) {
 							Sign in when you want saved threads, live answers, and account-level team context to stick.
 						</p>
 						<div class="mt-4 flex flex-wrap gap-3">
-							<a class="rounded-full bg-ink-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-cream-100" href={buildSignInPath(currentPersona.slug)}>
+							<a class="rounded-full bg-ink-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-cream-100" href={buildSignInPath(currentPersona.slug, sharePromptSeed)}>
 								Sign in to save history
 							</a>
-							<a class="rounded-full border border-ink-950/10 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-ink-900" href={buildSignUpPath(currentPersona.slug)}>
+							<a class="rounded-full border border-ink-950/10 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-ink-900" href={buildSignUpPath(currentPersona.slug, sharePromptSeed)}>
 								Create account
 							</a>
 						</div>
@@ -551,6 +628,28 @@ function handleSubmit(event: SubmitEvent) {
 					{/if}
 				</div>
 
+				<div class="rounded-[1.35rem] border border-ink-950/10 bg-cream-100/75 px-4 py-4 text-sm leading-7 text-ink-700">
+					<p class="text-xs uppercase tracking-[0.24em] text-ink-700/70">Share the booth</p>
+					<p class="mt-2 font-semibold text-ink-950">Bring a friend into {currentPersona.name}'s lane.</p>
+					<p class="mt-2">
+						Share a seeded prompt without exposing your private transcript. Larry sends them into the same booth with the opening take ready.
+					</p>
+					<p class="mt-3 rounded-2xl border border-ink-950/10 bg-white/80 px-4 py-3 text-sm text-ink-900">
+						{sharePromptSeed}
+					</p>
+					<div class="mt-4 flex flex-wrap gap-3">
+						<button class="rounded-full bg-ink-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-cream-100" onclick={() => void copyShareLink()} type="button">
+							Copy invite link
+						</button>
+						<button class="rounded-full border border-ink-950/10 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-ink-900" onclick={() => void copyShareInvite()} type="button">
+							Copy invite text
+						</button>
+					</div>
+					{#if shareNotice}
+						<p class="mt-3 text-xs uppercase tracking-[0.2em] text-ink-700/70">{shareNotice}</p>
+					{/if}
+				</div>
+
 				{#if messages.length > 0}
 					{#each messages as message, index (message.id)}
 						{@const contentParts = getMessageContentParts(message)}
@@ -644,10 +743,10 @@ function handleSubmit(event: SubmitEvent) {
 							Pick a booth, tee up the first take, and then sign in to let Larry answer with live search, citations, and saved history.
 						</p>
 						<div class="mt-3 flex flex-wrap gap-3">
-							<a class="rounded-full bg-ink-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-cream-100" href={buildSignInPath(currentPersona.slug)}>
+							<a class="rounded-full bg-ink-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-cream-100" href={buildSignInPath(currentPersona.slug, sharePromptSeed)}>
 								Sign in to start
 							</a>
-							<a class="rounded-full border border-ink-950/10 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-ink-900" href={buildSignUpPath(currentPersona.slug)}>
+							<a class="rounded-full border border-ink-950/10 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-ink-900" href={buildSignUpPath(currentPersona.slug, sharePromptSeed)}>
 								Create account
 							</a>
 						</div>

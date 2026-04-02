@@ -23,10 +23,9 @@ Status: complete for the first production-style pass.
 - Add query persistence, result ranking, and citation rendering.
 - Add routing rules for when live search is mandatory before answering.
 
-Status: functionally complete for the MVP, with ranked retrieval, structured odds/injuries coverage, line-movement metadata, and inline numbered citation references now live in chat.
+Status: functionally complete for the MVP, with ranked retrieval, structured odds/injuries coverage, line-movement metadata, provider-board timestamp support when available, and inline numbered citation references now live in chat.
 
-- Completed: Tavily web search adapter, ESPN structured scoreboard/standings adapter, ESPN structured injuries adapter, ESPN core odds adapter, persisted search traces, stronger result ranking, inline numbered citation references in the transcript, Vega stale-board guardrails for odds-oriented prompts, deeper Scout-specific structured-result ranking, and provider retrieval plus line-movement metadata for odds snapshots
-- Remaining: richer provider-native board-update timestamps if the provider exposes them reliably
+- Completed: Tavily web search adapter, ESPN structured scoreboard/standings adapter, ESPN structured injuries adapter, ESPN core odds adapter, persisted search traces, stronger result ranking, inline numbered citation references in the transcript, Vega stale-board guardrails for odds-oriented prompts, deeper Scout-specific structured-result ranking, provider retrieval plus line-movement metadata for odds snapshots, and provider-native board timestamp handling whenever ESPN exposes it
 
 ## Phase 4 - Multi-Persona Product Layer
 
@@ -36,10 +35,9 @@ Status: functionally complete for the MVP, with ranked retrieval, structured odd
 - Define persona-aware starter prompts, chat labels, and saved-history cues.
 - Add trust and safety guidance for odds-aware answers before Vega is fully exposed.
 
-Status: partially started.
+Status: complete for the current MVP pass.
 
-- Completed: base Larry persona prompt, seeded persona profile, billing schema, seeded plans, usage-ledger writes for search/inference, runtime persona selection, conversation persona persistence, persona-aware chat UX, account-driven favorite/rival team context in the live prompt path, stronger Vega betting-adjacent guardrails, shared abuse-edge prompt guidance, persona eval cases for regression coverage, product-level safe-response handling for abusive and reckless prompts, and automated eval execution in the test suite
-- Remaining: any extra UI affordances beyond the in-thread guardrail reply
+- Completed: base Larry persona prompt, seeded persona profile, billing schema, seeded plans, usage-ledger writes for search/inference, runtime persona selection, conversation persona persistence, persona-aware chat UX, account-driven favorite/rival team context in the live prompt path, stronger Vega betting-adjacent guardrails, shared abuse-edge prompt guidance, persona eval cases for regression coverage, product-level safe-response handling for abusive and reckless prompts, automated eval execution in the test suite, and in-product trust-cue UI for persona safety expectations
 
 Status note: chat history search, persona filtering, and cleaner auto-title refinement are now live for the conversation UX.
 
@@ -54,10 +52,9 @@ Status note: chat history search, persona filtering, and cleaner auto-title refi
 - Add recap, sharing, and referral surfaces.
 - Evaluate sponsorship placements that do not degrade the primary chat loop.
 
-Status: partially started with seeded-plan usage summaries, hard plan enforcement, upgrade messaging, Polar sandbox checkout routes, and entitlement sync now visible in account and chat.
+Status: complete for the current MVP pass, with pricing, packaging, growth hooks, and support runbooks all in place for launch evaluation.
 
-- Completed: seeded plans, entitlement primitives, usage-ledger writes, account-level billing summary, chat/account upgrade messaging, hard message and live-lookup enforcement in chat, Polar sandbox checkout routes, and webhook/return-based entitlement sync
-- Remaining: product packaging decisions for premium personas
+- Completed: seeded plans, entitlement primitives, usage-ledger writes, account-level billing summary, chat/account upgrade messaging, hard message and live-lookup enforcement in chat, Polar sandbox checkout routes, webhook/return-based entitlement sync, a usage-first packaging decision that keeps all personas available across plans, shareable booth invite hooks, and sponsor/disclosure guardrails for future experiments
 
 ## Cross-cutting launch checklist
 

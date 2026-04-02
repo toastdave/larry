@@ -10,6 +10,13 @@ Explore growth loops and sponsorship models that support the business without po
 - Sponsored placement rules for surfaces outside the core chat stream
 - Ad eligibility guardrails and disclosure requirements
 
+## Current status
+
+- Completed: chat now supports shareable booth invite links with seeded prompts so users can pull friends into the same persona lane without exposing private history
+- Completed: sponsor-surface, disclosure, and ranking-separation guardrails now live in `docs/growth/sponsorship-and-sharing.md`
+- Completed: early growth metrics are defined for sharing and future sponsor modules without touching answer ranking
+- Status note: no sponsor placements are live in-product yet, by design
+
 ## Requirements
 
 - Ads or sponsor placements must never alter factual ranking or citation choice.
