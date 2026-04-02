@@ -23,7 +23,7 @@ Create a sports chat experience that feels conversational, fast, and personality
 - Completed: assistant answers now support inline numbered citation references alongside transcript source cards
 - Completed: unsafe prompts now return explicit in-thread safety replies instead of silently relying on the model prompt alone
 - Completed: saved conversation history now supports title search and persona filtering in the chat sidebar
-- Remaining: better auto-title refinement
+- Completed: new conversations now get cleaner, more headline-style auto titles instead of raw first-prompt text
 
 ## Requirements
 

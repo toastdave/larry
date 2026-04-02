@@ -11,8 +11,30 @@ import {
 describe('chat helpers', () => {
 	test('builds a readable conversation title', () => {
 		expect(buildConversationTitle('Who is the biggest fraud contender in the NBA right now?')).toBe(
-			'Who is the biggest fraud contender in the NBA right now?'
+			'Biggest fraud contender in the NBA right now'
 		)
+	})
+
+	test('refines conversational prompts into cleaner debate titles', () => {
+		expect(
+			buildConversationTitle(
+				"Give me tonight's biggest NBA storyline, but talk to me like we're arguing over wings."
+			)
+		).toBe("Tonight's biggest NBA storyline")
+
+		expect(
+			buildConversationTitle(
+				'Walk me through the injuries, matchup edges, and market signals that could move this number.'
+			)
+		).toBe('The injuries, matchup edges, and market signals that...')
+	})
+
+	test('truncates very long titles on word boundaries', () => {
+		expect(
+			buildConversationTitle(
+				'Can you help me understand why this team keeps folding late in close games even when the talent advantage looks obvious on paper every single night?'
+			)
+		).toBe('Help me understand why this team keeps folding late in...')
 	})
 
 	test('builds a stable slug prefix with a random suffix', () => {

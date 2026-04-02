@@ -69,19 +69,70 @@ function normalizeWhitespace(value: string) {
 	return value.replace(/\s+/g, ' ').trim()
 }
 
+const titleLeadInPatterns = [
+	/^(give me|tell me|walk me through|break down|help me understand|talk to me about)\s+/i,
+	/^(what(?:'s| is)|who(?:'s| is)|what are|who are)\s+(the\s+)?/i,
+	/^(can|could|would)\s+you\s+/i,
+] as const
+
+const titleClauseSplitters = [', but ', '. ', '? ', '! ', ' - ', ' -- '] as const
+
+function stripConversationTitleLeadIn(value: string) {
+	let nextValue = value
+
+	for (const pattern of titleLeadInPatterns) {
+		nextValue = nextValue.replace(pattern, '')
+	}
+
+	return nextValue
+}
+
+function trimConversationTitleClause(value: string) {
+	for (const splitter of titleClauseSplitters) {
+		const [head] = value.split(splitter)
+
+		if (head && head !== value) {
+			return head
+		}
+	}
+
+	return value.split(/[?.!]/)[0] ?? value
+}
+
+function capitalizeTitle(value: string) {
+	return value ? `${value[0]?.toUpperCase() ?? ''}${value.slice(1)}` : value
+}
+
+function truncateTitle(value: string, maxLength = 56) {
+	if (value.length <= maxLength) {
+		return value
+	}
+
+	const truncated = value.slice(0, maxLength + 1)
+	const safeBreak = truncated.lastIndexOf(' ')
+
+	if (safeBreak > 24) {
+		return `${truncated.slice(0, safeBreak)}...`
+	}
+
+	return `${value.slice(0, maxLength)}...`
+}
+
 export function buildConversationTitle(prompt: string) {
 	const normalized = normalizeWhitespace(prompt)
+	const sanitized = normalized.replace(/^['"`]+|['"`]+$/g, '')
 
-	if (!normalized) {
+	if (!sanitized) {
 		return 'New Debate'
 	}
 
-	if (normalized.length <= 64) {
-		return normalized
-	}
+	const refined = truncateTitle(
+		capitalizeTitle(
+			normalizeWhitespace(trimConversationTitleClause(stripConversationTitleLeadIn(sanitized)))
+		).replace(/[?.!]+$/, '')
+	)
 
-	const words = normalized.split(' ').slice(0, 8).join(' ')
-	return `${words}...`
+	return refined || truncateTitle(sanitized.replace(/[?.!]+$/, '')) || 'New Debate'
 }
 
 export function buildConversationSlug(prompt: string) {
