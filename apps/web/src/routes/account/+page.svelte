@@ -9,14 +9,22 @@ const { data, form } = $props<{ data: PageData; form: ActionData | null }>()
 let errorMessage = $state('')
 let isSigningOut = $state(false)
 
+const profileForm = $derived(form?.profile ?? null)
+const preferencesForm = $derived(form?.preferences ?? null)
+const accountName = $derived(profileForm?.values?.displayName ?? data.user.name)
+const displayName = $derived(profileForm?.values?.displayName ?? data.user.name)
 const favoriteLeague = $derived(
-	form?.values?.favoriteLeague ?? data.preferences.favorite?.league ?? ''
+	preferencesForm?.values?.favoriteLeague ?? data.preferences.favorite?.league ?? ''
 )
 const favoriteTeam = $derived(
-	form?.values?.favoriteTeam ?? data.preferences.favorite?.teamName ?? ''
+	preferencesForm?.values?.favoriteTeam ?? data.preferences.favorite?.teamName ?? ''
 )
-const rivalLeague = $derived(form?.values?.rivalLeague ?? data.preferences.rival?.league ?? '')
-const rivalTeam = $derived(form?.values?.rivalTeam ?? data.preferences.rival?.teamName ?? '')
+const rivalLeague = $derived(
+	preferencesForm?.values?.rivalLeague ?? data.preferences.rival?.league ?? ''
+)
+const rivalTeam = $derived(
+	preferencesForm?.values?.rivalTeam ?? data.preferences.rival?.teamName ?? ''
+)
 
 const accountReadiness = [
 	'Auth and protected routes',
@@ -64,13 +72,17 @@ async function signOut() {
 	<div class="grid gap-6 lg:grid-cols-[1fr_1fr]">
 		<div class="rounded-[2rem] border border-white/70 bg-white/76 p-8 shadow-[0_32px_120px_-48px_rgba(8,23,17,0.45)] backdrop-blur">
 			<p class="font-display text-sm uppercase tracking-[0.3em] text-field-500">Account</p>
-			<h1 class="mt-4 font-display text-4xl leading-none text-ink-950">Good to see you, {data.user.name}.</h1>
+			<h1 class="mt-4 font-display text-4xl leading-none text-ink-950">Good to see you, {accountName}.</h1>
 			<p class="mt-4 max-w-xl text-base leading-8 text-ink-700">
 				Your account foundation is live and ready for saved chats, billing controls, and fandom
 				preferences that make Larry more personal and more dangerous.
 			</p>
 
 			<div class="mt-8 grid gap-4 sm:grid-cols-2">
+				<div class="rounded-2xl border border-ink-950/8 bg-cream-100/80 px-4 py-4">
+					<p class="text-xs uppercase tracking-[0.24em] text-ink-700/70">Display name</p>
+					<p class="mt-2 text-sm font-semibold text-ink-950">{accountName}</p>
+				</div>
 				<div class="rounded-2xl border border-ink-950/8 bg-cream-100/80 px-4 py-4">
 					<p class="text-xs uppercase tracking-[0.24em] text-ink-700/70">Email</p>
 					<p class="mt-2 text-sm font-semibold text-ink-950">{data.user.email}</p>
@@ -79,15 +91,46 @@ async function signOut() {
 					<p class="text-xs uppercase tracking-[0.24em] text-ink-700/70">Email verified</p>
 					<p class="mt-2 text-sm font-semibold text-ink-950">{data.user.emailVerified ? 'Verified' : 'Not yet verified'}</p>
 				</div>
-				<div class="rounded-2xl border border-ink-950/8 bg-cream-100/80 px-4 py-4">
+				<div class="rounded-2xl border border-ink-950/8 bg-cream-100/80 px-4 py-4 sm:col-span-2">
 					<p class="text-xs uppercase tracking-[0.24em] text-ink-700/70">Session ID</p>
 					<p class="mt-2 break-all text-sm font-semibold text-ink-950">{data.session.id}</p>
 				</div>
-				<div class="rounded-2xl border border-ink-950/8 bg-cream-100/80 px-4 py-4">
+				<div class="rounded-2xl border border-ink-950/8 bg-cream-100/80 px-4 py-4 sm:col-span-2">
 					<p class="text-xs uppercase tracking-[0.24em] text-ink-700/70">Session expires</p>
 					<p class="mt-2 text-sm font-semibold text-ink-950">{new Date(data.session.expiresAt).toLocaleString()}</p>
 				</div>
 			</div>
+
+			<form action="?/saveProfile" class="mt-8 rounded-[1.75rem] border border-ink-950/10 bg-white/75 p-5" method="POST">
+				<div class="flex flex-wrap items-start justify-between gap-3">
+					<div>
+						<p class="text-xs uppercase tracking-[0.24em] text-ink-700/70">Profile card</p>
+						<h2 class="mt-2 text-xl font-semibold text-ink-950">Give Larry the right name to put on the scouting report.</h2>
+						<p class="mt-2 max-w-2xl text-sm leading-7 text-ink-700">
+							Keep the public-facing account basics tight while the rest of the profile surface keeps growing.
+						</p>
+					</div>
+					<button class="rounded-full bg-ink-950 px-5 py-3 text-sm font-semibold text-cream-100" type="submit">
+						Save profile
+					</button>
+				</div>
+
+				<label class="mt-6 block text-xs uppercase tracking-[0.22em] text-ink-700/70" for="displayName">
+					Display name
+				</label>
+				<input class="mt-2 w-full rounded-2xl border border-ink-950/10 bg-cream-100/45 px-4 py-3 text-sm text-ink-950 outline-none transition focus:border-redline-500" id="displayName" name="displayName" placeholder="Larry Legend" value={displayName} />
+				<p class="mt-3 text-xs leading-6 text-ink-700/70">This is the name Larry uses across account and chat surfaces.</p>
+				{#if profileForm?.fieldErrors?.displayName}
+					<p class="mt-3 rounded-2xl border border-redline-500/20 bg-redline-500/10 px-4 py-3 text-sm text-redline-500">
+						{profileForm.fieldErrors.displayName}
+					</p>
+				{/if}
+				{#if profileForm?.message}
+					<p class={`mt-4 rounded-2xl px-4 py-3 text-sm ${profileForm.fieldErrors?.displayName ? 'border border-redline-500/20 bg-redline-500/10 text-redline-500' : 'border border-field-500/20 bg-field-500/10 text-field-700'}`}>
+						{profileForm.message}
+					</p>
+				{/if}
+			</form>
 
 			<form action="?/savePreferences" class="mt-8 rounded-[1.75rem] border border-ink-950/10 bg-cream-100/70 p-5" method="POST">
 				<div class="flex flex-wrap items-start justify-between gap-3">
@@ -120,9 +163,9 @@ async function signOut() {
 						</label>
 						<input class="mt-2 w-full rounded-2xl border border-ink-950/10 bg-cream-100/45 px-4 py-3 text-sm text-ink-950 outline-none transition focus:border-redline-500" id="favoriteTeam" name="favoriteTeam" placeholder="New York Knicks" value={favoriteTeam} />
 						<p class="mt-3 text-xs leading-6 text-ink-700/70">Leave both fields blank if you want Larry neutral on your side.</p>
-						{#if form?.fieldErrors?.favorite}
+						{#if preferencesForm?.fieldErrors?.favorite}
 							<p class="mt-3 rounded-2xl border border-redline-500/20 bg-redline-500/10 px-4 py-3 text-sm text-redline-500">
-								{form.fieldErrors.favorite}
+								{preferencesForm.fieldErrors.favorite}
 							</p>
 						{/if}
 					</div>
@@ -143,17 +186,17 @@ async function signOut() {
 						</label>
 						<input class="mt-2 w-full rounded-2xl border border-ink-950/10 bg-cream-100/45 px-4 py-3 text-sm text-ink-950 outline-none transition focus:border-redline-500" id="rivalTeam" name="rivalTeam" placeholder="Boston Celtics" value={rivalTeam} />
 						<p class="mt-3 text-xs leading-6 text-ink-700/70">Give Larry a rivalry target and Scout or Vega will still keep the facts clean.</p>
-						{#if form?.fieldErrors?.rival}
+						{#if preferencesForm?.fieldErrors?.rival}
 							<p class="mt-3 rounded-2xl border border-redline-500/20 bg-redline-500/10 px-4 py-3 text-sm text-redline-500">
-								{form.fieldErrors.rival}
+								{preferencesForm.fieldErrors.rival}
 							</p>
 						{/if}
 					</div>
 				</div>
 
-				{#if form?.message}
-					<p class={`mt-4 rounded-2xl px-4 py-3 text-sm ${form.fieldErrors?.favorite || form.fieldErrors?.rival ? 'border border-redline-500/20 bg-redline-500/10 text-redline-500' : 'border border-field-500/20 bg-field-500/10 text-field-700'}`}>
-						{form.message}
+				{#if preferencesForm?.message}
+					<p class={`mt-4 rounded-2xl px-4 py-3 text-sm ${preferencesForm.fieldErrors?.favorite || preferencesForm.fieldErrors?.rival ? 'border border-redline-500/20 bg-redline-500/10 text-redline-500' : 'border border-field-500/20 bg-field-500/10 text-field-700'}`}>
+						{preferencesForm.message}
 					</p>
 				{/if}
 			</form>

@@ -5,11 +5,12 @@ import {
 	isPolarCheckoutEnabled,
 	syncPolarCheckoutForUser,
 } from '$lib/server/polar'
+import { parseDisplayNameInput, readProfileFormValues } from '$lib/server/profile-settings'
 import {
 	parseTeamPreferenceInput,
 	readTeamPreferenceFormValues,
 } from '$lib/server/team-preferences'
-import { userTeamPreference } from '@larry/db/schema'
+import { user, userTeamPreference } from '@larry/db/schema'
 import { supportedLeagues } from '@larry/search'
 import { fail, redirect } from '@sveltejs/kit'
 import { and, eq, inArray } from 'drizzle-orm'
@@ -95,10 +96,74 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 }
 
 export const actions: Actions = {
+	saveProfile: async ({ locals, request }) => {
+		if (!locals.user) {
+			return fail(401, {
+				profile: {
+					message: 'You must be signed in to update your profile.',
+					values: {
+						displayName: '',
+					},
+				},
+			})
+		}
+
+		const values = readProfileFormValues(await request.formData())
+		const displayNameResult = parseDisplayNameInput(values.displayName)
+
+		if (displayNameResult.error) {
+			return fail(400, {
+				profile: {
+					fieldErrors: {
+						displayName: displayNameResult.error,
+					},
+					message: 'Fix the profile settings and try again.',
+					values,
+				},
+			})
+		}
+
+		const nextDisplayName = displayNameResult.value
+
+		if (!nextDisplayName) {
+			return fail(400, {
+				profile: {
+					fieldErrors: {
+						displayName: 'Display name is required.',
+					},
+					message: 'Fix the profile settings and try again.',
+					values,
+				},
+			})
+		}
+
+		await db
+			.update(user)
+			.set({
+				name: nextDisplayName,
+				updatedAt: new Date(),
+			})
+			.where(eq(user.id, locals.user.id))
+
+		return {
+			profile: {
+				message: 'Profile updated. Larry will use the new display name on the next request.',
+				values,
+			},
+		}
+	},
 	savePreferences: async ({ locals, request }) => {
 		if (!locals.user) {
 			return fail(401, {
-				message: 'You must be signed in to save team preferences.',
+				preferences: {
+					message: 'You must be signed in to save team preferences.',
+					values: {
+						favoriteLeague: '',
+						favoriteTeam: '',
+						rivalLeague: '',
+						rivalTeam: '',
+					},
+				},
 			})
 		}
 
@@ -118,12 +183,14 @@ export const actions: Actions = {
 
 		if (favoriteResult.error || rivalResult.error) {
 			return fail(400, {
-				fieldErrors: {
-					favorite: favoriteResult.error,
-					rival: rivalResult.error,
+				preferences: {
+					fieldErrors: {
+						favorite: favoriteResult.error,
+						rival: rivalResult.error,
+					},
+					message: 'Fix the team settings and try again.',
+					values,
 				},
-				message: 'Fix the team settings and try again.',
-				values,
 			})
 		}
 
@@ -155,8 +222,10 @@ export const actions: Actions = {
 		})
 
 		return {
-			message: 'Team preferences updated. Larry now knows who you love and who you love to hate.',
-			values,
+			preferences: {
+				message: 'Team preferences updated. Larry now knows who you love and who you love to hate.',
+				values,
+			},
 		}
 	},
 }
