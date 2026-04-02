@@ -17,7 +17,8 @@ Create the technical and product foundation for a fast-moving SvelteKit monolith
 - Completed: workspace scaffold, Bun workspaces, Docker and Compose workflows, Tailscale Serve tasks, root tooling, and repo agent guidance
 - Completed: environment-driven AI provider routing, with Ollama locally and Gemini as the hosted path through the AI SDK
 - Completed: seeded plans, seeded default persona profile, and database ownership through `packages/db`
-- Remaining: production-grade deployment runbooks and CI hardening beyond local and tailnet workflows
+- Completed: GitHub Actions now runs lint, typecheck, and test validation on pushes and pull requests
+- Remaining: production-grade deployment runbooks beyond local and tailnet workflows
 
 ## Requirements
 
