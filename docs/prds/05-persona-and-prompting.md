@@ -27,7 +27,8 @@ Turn Larry into a multi-persona sports AI app with distinct voices that feel int
 - Completed: shared prompt guardrails now redirect abusive sports talk and reckless betting requests toward safer, analysis-first answers
 - Completed: persona eval cases now exist in code for style, evidence, and gambling-safety regression coverage
 - Completed: chat now short-circuits abusive, violent, self-harm, and reckless-betting prompts into explicit safe-response flows before model generation
-- Remaining: automated eval execution and any future UI affordances beyond the in-thread safety reply
+- Completed: automated persona eval execution now runs in the test suite with pass/fail heuristics for style and safety regressions
+- Remaining: any future UI affordances beyond the in-thread safety reply
 
 ## Requirements
 
