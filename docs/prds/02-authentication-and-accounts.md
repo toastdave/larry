@@ -17,7 +17,8 @@ Launch a flexible account system that supports guest entry today and durable pre
 - Completed: sign-in, sign-up, account, and protected chat routes are live
 - Completed: OAuth providers can be toggled by environment configuration without code changes
 - Completed: account settings now let users save favorite and rival teams for persona-aware chat context
-- Remaining: guest-mode behavior, broader profile editing, and billing-aware upgrade prompts
+- Completed: account now shows current entitlement state, monthly usage, and plan-upgrade messaging from the seeded billing model
+- Remaining: guest-mode behavior and broader profile editing
 
 ## Requirements
 

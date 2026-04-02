@@ -1,3 +1,4 @@
+import { loadBillingSnapshotForUser } from '$lib/server/billing'
 import { db } from '$lib/server/db'
 import {
 	parseTeamPreferenceInput,
@@ -16,25 +17,29 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	const userId = locals.user.id
 
-	const teamPreferences = await db
-		.select({
-			affinity: userTeamPreference.affinity,
-			league: userTeamPreference.league,
-			teamName: userTeamPreference.teamName,
-		})
-		.from(userTeamPreference)
-		.where(
-			and(
-				eq(userTeamPreference.userId, userId),
-				inArray(userTeamPreference.affinity, ['favorite', 'rival'])
-			)
-		)
+	const [billing, teamPreferences] = await Promise.all([
+		loadBillingSnapshotForUser(userId),
+		db
+			.select({
+				affinity: userTeamPreference.affinity,
+				league: userTeamPreference.league,
+				teamName: userTeamPreference.teamName,
+			})
+			.from(userTeamPreference)
+			.where(
+				and(
+					eq(userTeamPreference.userId, userId),
+					inArray(userTeamPreference.affinity, ['favorite', 'rival'])
+				)
+			),
+	])
 
 	const favoriteTeam =
 		teamPreferences.find((preference) => preference.affinity === 'favorite') ?? null
 	const rivalTeam = teamPreferences.find((preference) => preference.affinity === 'rival') ?? null
 
 	return {
+		billing,
 		leagueOptions: supportedLeagues,
 		preferences: {
 			favorite: favoriteTeam,

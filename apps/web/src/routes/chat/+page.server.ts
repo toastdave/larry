@@ -1,3 +1,4 @@
+import { loadBillingSnapshotForUser } from '$lib/server/billing'
 import { loadConversationForUser } from '$lib/server/chat-store'
 import { getPersonaBySlug } from '@larry/ai'
 import { redirect } from '@sveltejs/kit'
@@ -10,12 +11,16 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	const conversationSlug = url.searchParams.get('conversation')
 	const initialPersonaSlug = getPersonaBySlug(url.searchParams.get('persona')).slug
-	const chatState = await loadConversationForUser(locals.user.id, conversationSlug, {
-		emptyState: url.searchParams.get('new') === '1',
-	})
+	const [billing, chatState] = await Promise.all([
+		loadBillingSnapshotForUser(locals.user.id),
+		loadConversationForUser(locals.user.id, conversationSlug, {
+			emptyState: url.searchParams.get('new') === '1',
+		}),
+	])
 
 	return {
 		activeConversation: chatState.activeConversation,
+		billing,
 		conversations: chatState.conversations,
 		initialPersonaSlug,
 		messages: chatState.messages,

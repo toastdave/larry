@@ -1,5 +1,6 @@
 <script lang="ts">
 import { goto } from '$app/navigation'
+import { formatPlanPrice } from '$lib/billing'
 import { formatCitationReferenceLabel, splitMessageForCitations } from '$lib/chat/citation-text'
 import { filterConversations, summarizeConversationFilters } from '$lib/chat/conversation-history'
 import {
@@ -52,6 +53,15 @@ const historyFilterSummary = $derived(
 		resultCount: filteredConversations.length,
 		search: historyFilters.search,
 	})
+)
+const billingTone = $derived(
+	data.billing.usage.messages.warningLevel === 'limit' ||
+		data.billing.usage.searches.warningLevel === 'limit'
+		? 'limit'
+		: data.billing.usage.messages.warningLevel === 'watch' ||
+				data.billing.usage.searches.warningLevel === 'watch'
+			? 'watch'
+			: 'healthy'
 )
 
 $effect(() => {
@@ -444,6 +454,21 @@ function handleSubmit(event: SubmitEvent) {
 			</div>
 
 			<div class="space-y-4 pt-5">
+				<div class={`rounded-[1.35rem] border px-4 py-4 text-sm leading-7 ${billingTone === 'limit' ? 'border-redline-500/20 bg-redline-500/10 text-redline-600' : billingTone === 'watch' ? 'border-gold-400/30 bg-gold-400/10 text-ink-900' : 'border-field-500/20 bg-field-500/10 text-field-700'}`}>
+					<p class="text-xs uppercase tracking-[0.24em] opacity-70">Plan pulse</p>
+					<p class="mt-2 font-semibold text-ink-950">
+						{data.billing.currentPlan.name} · {formatPlanPrice(data.billing.currentPlan.monthlyPriceCents)}
+					</p>
+					<p class="mt-2">
+						{data.billing.usage.messages.used}/{data.billing.usage.messages.included} messages and {data.billing.usage.searches.used}/{data.billing.usage.searches.included} live lookups used in {data.billing.usage.windowLabel}.
+					</p>
+					{#if data.billing.nextPlan}
+						<p class="mt-2">
+							Need more runway? {data.billing.nextPlan.name} steps up to {data.billing.nextPlan.monthlyIncludedMessages} messages and {data.billing.nextPlan.monthlyIncludedSearches} live lookups. <a class="font-semibold underline underline-offset-3" href="/account#billing">See upgrade details</a>.
+						</p>
+					{/if}
+				</div>
+
 				{#if messages.length > 0}
 					{#each messages as message, index (message.id)}
 						{@const contentParts = getMessageContentParts(message)}

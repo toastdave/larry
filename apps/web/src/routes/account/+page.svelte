@@ -1,6 +1,7 @@
 <script lang="ts">
 import { goto, invalidateAll } from '$app/navigation'
 import { authClient } from '$lib/auth-client'
+import { formatPlanPrice, humanizeFeatureFlag } from '$lib/billing'
 import type { ActionData, PageData } from './$types'
 
 const { data, form } = $props<{ data: PageData; form: ActionData | null }>()
@@ -153,12 +154,94 @@ async function signOut() {
 				{/each}
 			</ul>
 
-			<div class="mt-8 rounded-2xl bg-cream-100/80 p-5">
-				<p class="text-sm font-semibold text-ink-950">Hybrid billing plan</p>
-				<p class="mt-2 text-sm leading-7 text-ink-700">
-					Subscriptions handle predictable access while usage records keep overages and future credit
-					packs honest.
-				</p>
+			<div class="mt-8 rounded-2xl bg-cream-100/80 p-5" id="billing">
+				<div class="flex flex-wrap items-start justify-between gap-3">
+					<div>
+						<p class="text-sm font-semibold text-ink-950">Hybrid billing plan</p>
+						<p class="mt-2 text-sm leading-7 text-ink-700">
+							Subscriptions handle predictable access while usage records keep overages and future credit packs honest.
+						</p>
+					</div>
+					<span class="rounded-full border border-ink-950/10 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-ink-700">
+						{data.billing.entitlementStatus}
+					</span>
+				</div>
+
+				<div class="mt-4 grid gap-3 sm:grid-cols-2">
+					<div class="rounded-2xl border border-ink-950/8 bg-white/80 px-4 py-4">
+						<p class="text-xs uppercase tracking-[0.24em] text-ink-700/70">Current plan</p>
+						<p class="mt-2 text-lg font-semibold text-ink-950">
+							{data.billing.currentPlan.name} · {formatPlanPrice(data.billing.currentPlan.monthlyPriceCents)}
+						</p>
+					</div>
+					<div class="rounded-2xl border border-ink-950/8 bg-white/80 px-4 py-4">
+						<p class="text-xs uppercase tracking-[0.24em] text-ink-700/70">Billing window</p>
+						<p class="mt-2 text-lg font-semibold text-ink-950">{data.billing.usage.windowLabel}</p>
+					</div>
+				</div>
+
+				<div class="mt-4 grid gap-3 sm:grid-cols-2">
+					<div class="rounded-2xl border border-ink-950/8 bg-white/80 px-4 py-4">
+						<p class="text-xs uppercase tracking-[0.24em] text-ink-700/70">Messages</p>
+						<p class="mt-2 text-lg font-semibold text-ink-950">
+							{data.billing.usage.messages.used}/{data.billing.usage.messages.included}
+						</p>
+						<p class="mt-2 text-sm text-ink-700">
+							{data.billing.usage.messages.remaining} left this month
+						</p>
+					</div>
+					<div class="rounded-2xl border border-ink-950/8 bg-white/80 px-4 py-4">
+						<p class="text-xs uppercase tracking-[0.24em] text-ink-700/70">Live lookups</p>
+						<p class="mt-2 text-lg font-semibold text-ink-950">
+							{data.billing.usage.searches.used}/{data.billing.usage.searches.included}
+						</p>
+						<p class="mt-2 text-sm text-ink-700">
+							{data.billing.usage.searches.remaining} left this month
+						</p>
+					</div>
+				</div>
+
+				{#if data.billing.nextPlan}
+					<div class="mt-4 rounded-2xl border border-field-500/20 bg-field-500/10 px-4 py-4 text-sm text-field-700">
+						<p class="font-semibold text-ink-950">Upgrade prompt</p>
+						<p class="mt-2 leading-7">
+							If you are leaning on live game-day chat, {data.billing.nextPlan.name} gives you {data.billing.nextPlan.monthlyIncludedMessages} messages and {data.billing.nextPlan.monthlyIncludedSearches} live lookups per month. Checkout is the next billing milestone, but the entitlement shape is ready now.
+						</p>
+					</div>
+				{/if}
+			</div>
+
+			<div class="mt-5 rounded-2xl bg-white/80 p-5">
+				<p class="text-sm font-semibold text-ink-950">Plan lineup</p>
+				<div class="mt-4 grid gap-3 lg:grid-cols-3">
+					{#each data.billing.plans as planOption (planOption.id)}
+						<div class={`rounded-2xl border px-4 py-4 ${planOption.id === data.billing.currentPlan.id ? 'border-ink-950 bg-ink-950 text-cream-100' : 'border-ink-950/8 bg-cream-100/75 text-ink-950'}`}>
+							<div class="flex items-start justify-between gap-3">
+								<div>
+									<p class="text-sm font-semibold">{planOption.name}</p>
+									<p class={`mt-1 text-xs uppercase tracking-[0.24em] ${planOption.id === data.billing.currentPlan.id ? 'text-cream-100/70' : 'text-ink-700/70'}`}>
+										{formatPlanPrice(planOption.monthlyPriceCents)}
+									</p>
+								</div>
+								{#if planOption.id === data.billing.currentPlan.id}
+									<span class="rounded-full bg-white/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] text-cream-100/80">
+										Current
+									</span>
+								{/if}
+							</div>
+							<p class={`mt-3 text-sm leading-7 ${planOption.id === data.billing.currentPlan.id ? 'text-cream-100/80' : 'text-ink-700'}`}>
+								{planOption.monthlyIncludedMessages} messages · {planOption.monthlyIncludedSearches} live lookups each month
+							</p>
+							<div class="mt-3 flex flex-wrap gap-2">
+								{#each Object.entries(planOption.featureFlags).filter(([, enabled]) => Boolean(enabled)).slice(0, 4) as [flag] (flag)}
+									<span class={`rounded-full px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] ${planOption.id === data.billing.currentPlan.id ? 'bg-white/10 text-cream-100/70' : 'border border-ink-950/10 bg-white text-ink-700'}`}>
+										{humanizeFeatureFlag(flag)}
+									</span>
+								{/each}
+							</div>
+						</div>
+					{/each}
+				</div>
 			</div>
 
 			<div class="mt-5 rounded-2xl bg-white/80 p-5">
