@@ -34,6 +34,8 @@ let selectedPersonaSlug = $state<SportsPersonaSlug>(defaultPersonaSlug)
 const currentPersona = $derived(
 	getPersonaBySlug(activeConversation?.personaSlug ?? selectedPersonaSlug)
 )
+const isGuestMode = $derived(!data.user || !data.session)
+const greetingName = $derived(data.user?.name ?? 'future legend')
 const derivedLeague = $derived(inferLeague(draft))
 const promptSuggestions = $derived(getConversationStarters(currentPersona.slug))
 const shouldSearch = $derived(requiresFreshSearch(draft))
@@ -137,6 +139,14 @@ function resetComposer(nextDraft = '') {
 	errorMessage = ''
 }
 
+function buildSignInPath(personaSlug: SportsPersonaSlug) {
+	return `/auth/sign-in?redirectTo=${encodeURIComponent(`/chat?new=1&persona=${personaSlug}`)}`
+}
+
+function buildSignUpPath(personaSlug: SportsPersonaSlug) {
+	return `/auth/sign-up?redirectTo=${encodeURIComponent(`/chat?new=1&persona=${personaSlug}`)}`
+}
+
 async function startFreshWithPersona(personaSlug: SportsPersonaSlug) {
 	if (isSending) {
 		return
@@ -160,6 +170,11 @@ async function sendPrompt(promptOverride?: string) {
 	const persona = getPersonaBySlug(personaSlug)
 
 	if (!prompt || isSending) {
+		return
+	}
+
+	if (isGuestMode) {
+		await goto(buildSignInPath(personaSlug))
 		return
 	}
 
@@ -323,12 +338,18 @@ function handleSubmit(event: SubmitEvent) {
 		<div class="space-y-6 rounded-[2rem] border border-white/70 bg-white/76 p-6 shadow-[0_32px_120px_-48px_rgba(8,23,17,0.45)] backdrop-blur">
 			<p class="font-display text-sm uppercase tracking-[0.3em] text-field-500">Multi-persona chat</p>
 			<h1 class="mt-4 font-display text-4xl leading-none text-ink-950">
-				Pick the voice, keep the receipts, {data.user.name}.
+				Pick the voice, keep the receipts, {greetingName}.
 			</h1>
 			<p class="mt-4 text-sm leading-7 text-ink-700">
-				Larry brings the barstool energy, Scout brings the scouting report, and Vega
-				tracks the market without faking stale odds. Every conversation keeps its own
-				persona, history, and live-data expectations.
+				{#if isGuestMode}
+					Larry brings the barstool energy, Scout brings the scouting report, and Vega
+					tracks the market without faking stale odds. Kick the tires in guest mode, then
+					sign in when you want live answers and saved history.
+				{:else}
+					Larry brings the barstool energy, Scout brings the scouting report, and Vega
+					tracks the market without faking stale odds. Every conversation keeps its own
+					persona, history, and live-data expectations.
+				{/if}
 			</p>
 
 			<ul class="mt-6 space-y-3 text-sm leading-7 text-ink-700">
@@ -401,71 +422,88 @@ function handleSubmit(event: SubmitEvent) {
 					<p class="text-sm font-semibold text-ink-950">Saved debates</p>
 					<a
 						class="rounded-full border border-ink-950/10 bg-cream-100 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-ink-900"
-						href={`/chat?new=1&persona=${currentPersona.slug}`}
+						href={isGuestMode ? buildSignInPath(currentPersona.slug) : `/chat?new=1&persona=${currentPersona.slug}`}
 					>
-						Fresh thread
+						{isGuestMode ? 'Sign in' : 'Fresh thread'}
 					</a>
 				</div>
 
-				<div class="mt-4 space-y-3 rounded-[1.25rem] border border-ink-950/8 bg-cream-100/70 p-3">
-					<label class="block" for="history-search">
-						<span class="text-[11px] uppercase tracking-[0.24em] text-ink-700/70">History search</span>
-						<input
-							bind:value={historyFilters.search}
-							class="mt-2 w-full rounded-2xl border border-ink-950/10 bg-white px-4 py-3 text-sm text-ink-950 outline-none transition focus:border-redline-500"
-							id="history-search"
-							placeholder="Search saved debate titles"
-						/>
-					</label>
-
-					<div class="flex flex-wrap gap-2">
-						{#each [{ label: 'All booths', slug: 'all' }, ...sportsPersonas.map((persona) => ({ label: persona.name, slug: persona.slug }))] as filterOption (filterOption.slug)}
-							<button
-								class={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] transition ${historyFilters.personaSlug === filterOption.slug ? 'bg-ink-950 text-cream-100' : 'border border-ink-950/10 bg-white text-ink-700 hover:border-redline-500/40'}`}
-								onclick={() => {
-									historyFilters.personaSlug = filterOption.slug as 'all' | SportsPersonaSlug
-								}}
-								type="button"
-							>
-								{filterOption.label}
-							</button>
-						{/each}
-					</div>
-
-					<p class="text-xs uppercase tracking-[0.22em] text-ink-700/65">{historyFilterSummary}</p>
-				</div>
-
-				{#if conversations.length === 0}
-					<p class="mt-4 text-sm leading-7 text-ink-700">
-						No saved debates yet. Pick a booth, fire the opening take, and the transcript will
-						start keeping score.
-					</p>
-				{:else if filteredConversations.length === 0}
-					<p class="mt-4 rounded-2xl border border-dashed border-ink-950/12 bg-white/70 px-4 py-4 text-sm leading-7 text-ink-700">
-						Nothing matches this history search yet. Try a different title keyword or switch booths.
-					</p>
-				{:else}
-					<div class="mt-4 space-y-3">
-						{#each filteredConversations as conversation (conversation.id)}
-							{@const persona = getPersonaDetails(conversation.personaSlug)}
-							<a
-								class={`block rounded-2xl border px-4 py-3 text-sm transition ${activeConversation?.id === conversation.id ? 'border-ink-950 bg-ink-950 text-cream-100' : 'border-ink-950/10 bg-cream-100/75 text-ink-900 hover:border-redline-500/40 hover:bg-white'}`}
-								href={`/chat?conversation=${conversation.slug}`}
-							>
-								<div class="flex items-start justify-between gap-3">
-									<p class="font-semibold">{conversation.title}</p>
-									<span
-										class={`rounded-full px-2.5 py-1 text-[10px] uppercase tracking-[0.24em] ${activeConversation?.id === conversation.id ? 'bg-white/10 text-cream-100/80' : 'bg-white text-ink-700'}`}
-									>
-										{persona.name}
-									</span>
-								</div>
-								<p class={`mt-2 text-xs ${activeConversation?.id === conversation.id ? 'text-cream-100/70' : 'text-ink-700/70'}`}>
-									Updated {formatUpdatedAt(conversation.updatedAt)}
-								</p>
+				{#if isGuestMode}
+					<div class="mt-4 rounded-[1.25rem] border border-dashed border-ink-950/12 bg-cream-100/70 p-4 text-sm leading-7 text-ink-700">
+						<p class="font-semibold text-ink-950">Guest mode keeps the booth open, not the archive.</p>
+						<p class="mt-2">
+							Sign in when you want saved threads, live answers, and account-level team context to stick.
+						</p>
+						<div class="mt-4 flex flex-wrap gap-3">
+							<a class="rounded-full bg-ink-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-cream-100" href={buildSignInPath(currentPersona.slug)}>
+								Sign in to save history
 							</a>
-						{/each}
+							<a class="rounded-full border border-ink-950/10 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-ink-900" href={buildSignUpPath(currentPersona.slug)}>
+								Create account
+							</a>
+						</div>
 					</div>
+				{:else}
+					<div class="mt-4 space-y-3 rounded-[1.25rem] border border-ink-950/8 bg-cream-100/70 p-3">
+						<label class="block" for="history-search">
+							<span class="text-[11px] uppercase tracking-[0.24em] text-ink-700/70">History search</span>
+							<input
+								bind:value={historyFilters.search}
+								class="mt-2 w-full rounded-2xl border border-ink-950/10 bg-white px-4 py-3 text-sm text-ink-950 outline-none transition focus:border-redline-500"
+								id="history-search"
+								placeholder="Search saved debate titles"
+							/>
+						</label>
+
+						<div class="flex flex-wrap gap-2">
+							{#each [{ label: 'All booths', slug: 'all' }, ...sportsPersonas.map((persona) => ({ label: persona.name, slug: persona.slug }))] as filterOption (filterOption.slug)}
+								<button
+									class={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] transition ${historyFilters.personaSlug === filterOption.slug ? 'bg-ink-950 text-cream-100' : 'border border-ink-950/10 bg-white text-ink-700 hover:border-redline-500/40'}`}
+									onclick={() => {
+										historyFilters.personaSlug = filterOption.slug as 'all' | SportsPersonaSlug
+									}}
+									type="button"
+								>
+									{filterOption.label}
+								</button>
+							{/each}
+						</div>
+
+						<p class="text-xs uppercase tracking-[0.22em] text-ink-700/65">{historyFilterSummary}</p>
+					</div>
+
+					{#if conversations.length === 0}
+						<p class="mt-4 text-sm leading-7 text-ink-700">
+							No saved debates yet. Pick a booth, fire the opening take, and the transcript will
+							start keeping score.
+						</p>
+					{:else if filteredConversations.length === 0}
+						<p class="mt-4 rounded-2xl border border-dashed border-ink-950/12 bg-white/70 px-4 py-4 text-sm leading-7 text-ink-700">
+							Nothing matches this history search yet. Try a different title keyword or switch booths.
+						</p>
+					{:else}
+						<div class="mt-4 space-y-3">
+							{#each filteredConversations as conversation (conversation.id)}
+								{@const persona = getPersonaDetails(conversation.personaSlug)}
+								<a
+									class={`block rounded-2xl border px-4 py-3 text-sm transition ${activeConversation?.id === conversation.id ? 'border-ink-950 bg-ink-950 text-cream-100' : 'border-ink-950/10 bg-cream-100/75 text-ink-900 hover:border-redline-500/40 hover:bg-white'}`}
+									href={`/chat?conversation=${conversation.slug}`}
+								>
+									<div class="flex items-start justify-between gap-3">
+										<p class="font-semibold">{conversation.title}</p>
+										<span
+											class={`rounded-full px-2.5 py-1 text-[10px] uppercase tracking-[0.24em] ${activeConversation?.id === conversation.id ? 'bg-white/10 text-cream-100/80' : 'bg-white text-ink-700'}`}
+										>
+											{persona.name}
+										</span>
+									</div>
+									<p class={`mt-2 text-xs ${activeConversation?.id === conversation.id ? 'text-cream-100/70' : 'text-ink-700/70'}`}>
+										Updated {formatUpdatedAt(conversation.updatedAt)}
+									</p>
+								</a>
+							{/each}
+						</div>
+					{/if}
 				{/if}
 			</div>
 		</div>
@@ -479,9 +517,9 @@ function handleSubmit(event: SubmitEvent) {
 				</div>
 				<a
 					class="rounded-full border border-ink-950/10 bg-cream-100 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-ink-900"
-					href={`/chat?new=1&persona=${currentPersona.slug}`}
+					href={isGuestMode ? buildSignInPath(currentPersona.slug) : `/chat?new=1&persona=${currentPersona.slug}`}
 				>
-					Start fresh
+					{isGuestMode ? 'Sign in to chat' : 'Start fresh'}
 				</a>
 			</div>
 
@@ -494,6 +532,11 @@ function handleSubmit(event: SubmitEvent) {
 					<p class="mt-2">
 						{data.billing.usage.messages.used}/{data.billing.usage.messages.included} messages and {data.billing.usage.searches.used}/{data.billing.usage.searches.included} live lookups used in {data.billing.usage.windowLabel}.
 					</p>
+					{#if isGuestMode}
+						<p class="mt-2 font-semibold">
+							Guest mode rides on the Free plan preview. Sign in when you want usage tracking, saved debates, and real-time answers to count for you.
+						</p>
+					{/if}
 					{#if composerBlockedReason}
 						<p class="mt-2 font-semibold">
 							{composerBlockedMessage}
@@ -594,6 +637,23 @@ function handleSubmit(event: SubmitEvent) {
 				</label>
 				<textarea bind:value={draft} class="mt-3 min-h-28 w-full rounded-2xl border border-ink-950/10 bg-cream-100/45 px-4 py-3 text-sm text-ink-950 outline-none transition focus:border-redline-500" id="draft"></textarea>
 
+				{#if isGuestMode}
+					<div class="mt-4 rounded-2xl border border-ink-950/10 bg-cream-100/80 px-4 py-4 text-sm text-ink-900">
+						<p class="font-semibold text-ink-950">Guest mode preview</p>
+						<p class="mt-2 leading-7">
+							Pick a booth, tee up the first take, and then sign in to let Larry answer with live search, citations, and saved history.
+						</p>
+						<div class="mt-3 flex flex-wrap gap-3">
+							<a class="rounded-full bg-ink-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-cream-100" href={buildSignInPath(currentPersona.slug)}>
+								Sign in to start
+							</a>
+							<a class="rounded-full border border-ink-950/10 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-ink-900" href={buildSignUpPath(currentPersona.slug)}>
+								Create account
+							</a>
+						</div>
+					</div>
+				{/if}
+
 				{#if composerBlockedReason}
 					<div class="mt-4 rounded-2xl border border-redline-500/20 bg-redline-500/10 px-4 py-4 text-sm text-redline-500">
 						<p class="font-semibold text-ink-950">Usage limit hit</p>
@@ -619,7 +679,9 @@ function handleSubmit(event: SubmitEvent) {
 
 				<div class="mt-4 flex flex-wrap items-center justify-between gap-3">
 					<p class="text-sm text-ink-700">
-						{composerBlockedReason === 'messages'
+						{isGuestMode
+							? `${currentPersona.name} is ready. Sign in to get the real answer, keep the transcript, and turn on live retrieval.`
+							: composerBlockedReason === 'messages'
 							? `You have spent every message in this billing window. Upgrade or wait for the reset before ${currentPersona.name} can answer again.`
 							: composerBlockedReason === 'searches'
 								? `This question needs live retrieval, but your plan has no live lookups left this month.`
@@ -630,6 +692,8 @@ function handleSubmit(event: SubmitEvent) {
 					<button class="rounded-full bg-ink-950 px-5 py-3 text-sm font-semibold text-cream-100 disabled:cursor-not-allowed disabled:opacity-70" disabled={isSending || !draft.trim() || Boolean(composerBlockedReason)} type="submit">
 						{isSending
 							? 'Sending...'
+							: isGuestMode
+								? `Sign in for ${currentPersona.name}`
 							: composerBlockedReason === 'messages'
 								? 'Monthly cap reached'
 								: composerBlockedReason === 'searches'

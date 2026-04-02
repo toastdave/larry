@@ -109,6 +109,36 @@ export async function loadBillingSnapshotForUser(userId: string): Promise<Billin
 	}
 }
 
+export async function loadPublicBillingSnapshot(): Promise<BillingSnapshot> {
+	const { label } = getWindowRange()
+	const plans = await db.select().from(plan).orderBy(asc(plan.monthlyPriceCents))
+	const freePlan = plans.find((entry) => entry.slug === 'free') ?? plans[0]
+
+	if (!freePlan) {
+		throw new Error('Billing plans are not seeded.')
+	}
+
+	return {
+		currentPlan: freePlan,
+		entitlementStatus: 'free',
+		nextPlan: getRecommendedUpgrade(plans, freePlan.slug),
+		plans,
+		usage: {
+			messages: summarizeUsage({
+				included: freePlan.monthlyIncludedMessages,
+				label: 'messages',
+				used: 0,
+			}),
+			searches: summarizeUsage({
+				included: freePlan.monthlyIncludedSearches,
+				label: 'live lookups',
+				used: 0,
+			}),
+			windowLabel: label,
+		},
+	}
+}
+
 export async function loadChatBillingAccessForUser(input: {
 	prompt: string
 	userId: string

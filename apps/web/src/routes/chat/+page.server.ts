@@ -1,17 +1,28 @@
-import { loadBillingSnapshotForUser } from '$lib/server/billing'
+import { loadBillingSnapshotForUser, loadPublicBillingSnapshot } from '$lib/server/billing'
 import { loadConversationForUser } from '$lib/server/chat-store'
 import { getCheckoutPathForPlan } from '$lib/server/polar'
 import { getPersonaBySlug } from '@larry/ai'
-import { redirect } from '@sveltejs/kit'
 import type { PageServerLoad } from './$types'
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-	if (!locals.user || !locals.session) {
-		throw redirect(303, '/auth/sign-in?redirectTo=/chat')
-	}
-
 	const conversationSlug = url.searchParams.get('conversation')
 	const initialPersonaSlug = getPersonaBySlug(url.searchParams.get('persona')).slug
+
+	if (!locals.user || !locals.session) {
+		const billing = await loadPublicBillingSnapshot()
+
+		return {
+			activeConversation: null,
+			billing,
+			billingUpgradePath: billing.nextPlan ? getCheckoutPathForPlan(billing.nextPlan.slug) : null,
+			conversations: [],
+			initialPersonaSlug,
+			messages: [],
+			session: null,
+			user: null,
+		}
+	}
+
 	const [billing, chatState] = await Promise.all([
 		loadBillingSnapshotForUser(locals.user.id),
 		loadConversationForUser(locals.user.id, conversationSlug, {
