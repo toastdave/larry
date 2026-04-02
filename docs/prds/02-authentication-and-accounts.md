@@ -22,7 +22,7 @@ Launch a flexible account system that supports guest entry today and durable pre
 - Completed: account now supports display-name editing without leaving the main settings surface
 - Completed: account now supports avatar URL editing and preview so the user identity can surface in the main app chrome
 - Completed: guest mode can now open the chat shell, browse personas, and route users into auth when they want live answers and saved history
-- Remaining: richer profile editing beyond the core display name and avatar fields
+- Completed: account now supports richer fan-card editing with location, fan bio, and favorite sports moment fields that can personalize chat beyond the core display name and avatar
 
 ## Requirements
 

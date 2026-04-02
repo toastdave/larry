@@ -7,6 +7,9 @@ import {
 } from '$lib/server/polar'
 import {
 	parseDisplayNameInput,
+	parseFanBioInput,
+	parseFavoriteSportsMomentInput,
+	parseLocationInput,
 	parseProfileImageInput,
 	readProfileFormValues,
 } from '$lib/server/profile-settings'
@@ -63,7 +66,19 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		}
 	}
 
-	const [billing, teamPreferences] = await Promise.all([
+	const [accountProfile, billing, teamPreferences] = await Promise.all([
+		db
+			.select({
+				displayName: user.name,
+				fanBio: user.fanBio,
+				favoriteSportsMoment: user.favoriteSportsMoment,
+				imageUrl: user.image,
+				location: user.location,
+			})
+			.from(user)
+			.where(eq(user.id, userId))
+			.limit(1)
+			.then((rows) => rows[0] ?? null),
 		loadBillingSnapshotForUser(userId),
 		db
 			.select({
@@ -85,6 +100,13 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const rivalTeam = teamPreferences.find((preference) => preference.affinity === 'rival') ?? null
 
 	return {
+		accountProfile: accountProfile ?? {
+			displayName: locals.user.name,
+			fanBio: null,
+			favoriteSportsMoment: null,
+			imageUrl: locals.user.image ?? null,
+			location: null,
+		},
 		billing,
 		checkoutLinks: getAvailableCheckoutPaths(),
 		checkoutNotice,
@@ -107,6 +129,10 @@ export const actions: Actions = {
 					message: 'You must be signed in to update your profile.',
 					values: {
 						displayName: '',
+						fanBio: '',
+						favoriteSportsMoment: '',
+						imageUrl: '',
+						location: '',
 					},
 				},
 			})
@@ -114,14 +140,26 @@ export const actions: Actions = {
 
 		const values = readProfileFormValues(await request.formData())
 		const displayNameResult = parseDisplayNameInput(values.displayName)
+		const fanBioResult = parseFanBioInput(values.fanBio)
+		const favoriteSportsMomentResult = parseFavoriteSportsMomentInput(values.favoriteSportsMoment)
 		const imageUrlResult = parseProfileImageInput(values.imageUrl)
+		const locationResult = parseLocationInput(values.location)
 
-		if (displayNameResult.error || imageUrlResult.error) {
+		if (
+			displayNameResult.error ||
+			fanBioResult.error ||
+			favoriteSportsMomentResult.error ||
+			imageUrlResult.error ||
+			locationResult.error
+		) {
 			return fail(400, {
 				profile: {
 					fieldErrors: {
 						displayName: displayNameResult.error,
+						fanBio: fanBioResult.error,
+						favoriteSportsMoment: favoriteSportsMomentResult.error,
 						imageUrl: imageUrlResult.error,
+						location: locationResult.error,
 					},
 					message: 'Fix the profile settings and try again.',
 					values,
@@ -130,13 +168,20 @@ export const actions: Actions = {
 		}
 
 		const nextDisplayName = displayNameResult.value
+		const nextFanBio = fanBioResult.value
+		const nextFavoriteSportsMoment = favoriteSportsMomentResult.value
 		const nextImageUrl = imageUrlResult.value
+		const nextLocation = locationResult.value
 
 		if (!nextDisplayName) {
 			return fail(400, {
 				profile: {
 					fieldErrors: {
 						displayName: 'Display name is required.',
+						fanBio: fanBioResult.error,
+						favoriteSportsMoment: favoriteSportsMomentResult.error,
+						imageUrl: imageUrlResult.error,
+						location: locationResult.error,
 					},
 					message: 'Fix the profile settings and try again.',
 					values,
@@ -147,7 +192,10 @@ export const actions: Actions = {
 		await db
 			.update(user)
 			.set({
+				fanBio: nextFanBio,
+				favoriteSportsMoment: nextFavoriteSportsMoment,
 				image: nextImageUrl,
+				location: nextLocation,
 				name: nextDisplayName,
 				updatedAt: new Date(),
 			})
@@ -155,7 +203,7 @@ export const actions: Actions = {
 
 		return {
 			profile: {
-				message: 'Profile updated. Larry will use the new display name on the next request.',
+				message: 'Profile updated. Larry can use the richer fan card context on the next request.',
 				values,
 			},
 		}

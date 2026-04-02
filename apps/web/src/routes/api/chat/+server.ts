@@ -273,7 +273,10 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 				let usage: unknown
 
 				const chatStream = createChatTextStream({
+					fanBio: startedTurn.fanBio,
 					favoriteTeam: startedTurn.favoriteTeam,
+					favoriteSportsMoment: startedTurn.favoriteSportsMoment,
+					location: startedTurn.location,
 					messages: startedTurn.historyMessages,
 					onFinish: async (event) => {
 						finishReason = event.finishReason

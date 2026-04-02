@@ -54,7 +54,10 @@ export function buildModelMessages(messages: StoredMessage[]) {
 }
 
 export function createChatTextStream(input: {
+	fanBio?: string | null
 	favoriteTeam?: string | null
+	favoriteSportsMoment?: string | null
+	location?: string | null
 	messages: StoredMessage[]
 	onFinish?: (event: {
 		finishReason?: string | null
@@ -88,7 +91,10 @@ export function createChatTextStream(input: {
 		},
 		system: [
 			createSystemPrompt({
+				fanBio: input.fanBio,
 				favoriteTeam: input.favoriteTeam,
+				favoriteSportsMoment: input.favoriteSportsMoment,
+				location: input.location,
 				persona: input.personaSlug,
 				rivalTeam: input.rivalTeam,
 			}),

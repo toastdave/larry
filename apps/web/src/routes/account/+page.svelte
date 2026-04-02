@@ -12,9 +12,14 @@ let isSigningOut = $state(false)
 
 const profileForm = $derived(form?.profile ?? null)
 const preferencesForm = $derived(form?.preferences ?? null)
-const accountName = $derived(profileForm?.values?.displayName ?? data.user.name)
-const displayName = $derived(profileForm?.values?.displayName ?? data.user.name)
-const avatarUrl = $derived(profileForm?.values?.imageUrl ?? data.user.image ?? '')
+const accountName = $derived(profileForm?.values?.displayName ?? data.accountProfile.displayName)
+const displayName = $derived(profileForm?.values?.displayName ?? data.accountProfile.displayName)
+const avatarUrl = $derived(profileForm?.values?.imageUrl ?? data.accountProfile.imageUrl ?? '')
+const location = $derived(profileForm?.values?.location ?? data.accountProfile.location ?? '')
+const fanBio = $derived(profileForm?.values?.fanBio ?? data.accountProfile.fanBio ?? '')
+const favoriteSportsMoment = $derived(
+	profileForm?.values?.favoriteSportsMoment ?? data.accountProfile.favoriteSportsMoment ?? ''
+)
 const favoriteLeague = $derived(
 	preferencesForm?.values?.favoriteLeague ?? data.preferences.favorite?.league ?? ''
 )
@@ -32,10 +37,20 @@ const accountReadiness = [
 	'Auth and protected routes',
 	'Hybrid billing tables and seeded plans',
 	'Hard chat and live-lookup enforcement in chat',
+	'Expanded fan card fields for richer personalization',
 	'Favorite and rival team preference controls',
 	'Usage ledger for inference and search cost tracking',
 ]
 const personaLineup = sportsPersonas.map((persona) => persona.name).join(', ')
+const personalizationSignalCount = $derived(
+	[
+		location,
+		fanBio,
+		favoriteSportsMoment,
+		data.preferences.favorite?.teamName ?? '',
+		data.preferences.rival?.teamName ?? '',
+	].filter(Boolean).length
+)
 
 function getCheckoutLink(planSlug: string) {
 	if (planSlug === 'pro') {
@@ -77,8 +92,8 @@ async function signOut() {
 			<p class="font-display text-sm uppercase tracking-[0.3em] text-field-500">Account</p>
 			<h1 class="mt-4 font-display text-4xl leading-none text-ink-950">Good to see you, {accountName}.</h1>
 			<p class="mt-4 max-w-xl text-base leading-8 text-ink-700">
-				Your account foundation is live and ready for saved chats, billing controls, and fandom
-				preferences that make Larry more personal and more dangerous.
+				Your account now doubles as a fan card: saved chats, billing controls, and richer profile
+				context that makes Larry feel like he actually knows who walked into the booth.
 			</p>
 
 			<div class="mt-8 grid gap-4 sm:grid-cols-2">
@@ -102,6 +117,11 @@ async function signOut() {
 					<p class="text-xs uppercase tracking-[0.24em] text-ink-700/70">Session expires</p>
 					<p class="mt-2 text-sm font-semibold text-ink-950">{new Date(data.session.expiresAt).toLocaleString()}</p>
 				</div>
+				<div class="rounded-2xl border border-ink-950/8 bg-cream-100/80 px-4 py-4 sm:col-span-2">
+					<p class="text-xs uppercase tracking-[0.24em] text-ink-700/70">Personalization signals</p>
+					<p class="mt-2 text-sm font-semibold text-ink-950">{personalizationSignalCount} live profile cues</p>
+					<p class="mt-2 text-xs leading-6 text-ink-700/70">Location, fan bio, favorite sports memory, and team loyalties all feed the booth context.</p>
+				</div>
 			</div>
 
 			<form action="?/saveProfile" class="mt-8 rounded-[1.75rem] border border-ink-950/10 bg-white/75 p-5" method="POST">
@@ -110,7 +130,7 @@ async function signOut() {
 						<p class="text-xs uppercase tracking-[0.24em] text-ink-700/70">Profile card</p>
 						<h2 class="mt-2 text-xl font-semibold text-ink-950">Give Larry the right name to put on the scouting report.</h2>
 						<p class="mt-2 max-w-2xl text-sm leading-7 text-ink-700">
-							Keep the public-facing account basics tight while the rest of the profile surface keeps growing.
+							Fill in the fan card so chat can sound more grounded in your sports identity without leaking into generic boilerplate.
 						</p>
 					</div>
 					<button class="rounded-full bg-ink-950 px-5 py-3 text-sm font-semibold text-cream-100" type="submit">
@@ -134,22 +154,72 @@ async function signOut() {
 				</label>
 				<input class="mt-2 w-full rounded-2xl border border-ink-950/10 bg-cream-100/45 px-4 py-3 text-sm text-ink-950 outline-none transition focus:border-redline-500" id="imageUrl" name="imageUrl" placeholder="https://example.com/avatar.png" value={avatarUrl} />
 				<p class="mt-3 text-xs leading-6 text-ink-700/70">Optional. Use an http or https image URL if you want an avatar in the account header.</p>
-				{#if avatarUrl}
-					<div class="mt-4 flex items-center gap-4 rounded-2xl border border-ink-950/8 bg-cream-100/80 px-4 py-4">
-						<img alt={`Avatar preview for ${accountName}`} class="h-14 w-14 rounded-full object-cover" src={avatarUrl} />
-						<div>
-							<p class="text-xs uppercase tracking-[0.22em] text-ink-700/70">Preview</p>
-							<p class="mt-1 text-sm font-semibold text-ink-950">{accountName}</p>
-						</div>
-					</div>
-				{/if}
 				{#if profileForm?.fieldErrors?.imageUrl}
 					<p class="mt-3 rounded-2xl border border-redline-500/20 bg-redline-500/10 px-4 py-3 text-sm text-redline-500">
 						{profileForm.fieldErrors.imageUrl}
 					</p>
 				{/if}
+
+				<label class="mt-6 block text-xs uppercase tracking-[0.22em] text-ink-700/70" for="location">
+					Location
+				</label>
+				<input class="mt-2 w-full rounded-2xl border border-ink-950/10 bg-cream-100/45 px-4 py-3 text-sm text-ink-950 outline-none transition focus:border-redline-500" id="location" name="location" placeholder="Queens, NY" value={location} />
+				<p class="mt-3 text-xs leading-6 text-ink-700/70">Optional. Gives Larry a little hometown texture when it actually matters.</p>
+				{#if profileForm?.fieldErrors?.location}
+					<p class="mt-3 rounded-2xl border border-redline-500/20 bg-redline-500/10 px-4 py-3 text-sm text-redline-500">
+						{profileForm.fieldErrors.location}
+					</p>
+				{/if}
+
+				<label class="mt-6 block text-xs uppercase tracking-[0.22em] text-ink-700/70" for="fanBio">
+					Fan bio
+				</label>
+				<textarea class="mt-2 min-h-24 w-full rounded-2xl border border-ink-950/10 bg-cream-100/45 px-4 py-3 text-sm text-ink-950 outline-none transition focus:border-redline-500" id="fanBio" name="fanBio" placeholder="Defense-first Knicks sicko who trusts ugly wins and hates lazy closeouts.">{fanBio}</textarea>
+				<p class="mt-3 text-xs leading-6 text-ink-700/70">Optional. One sharp line about how you watch sports or what kind of fan you are.</p>
+				{#if profileForm?.fieldErrors?.fanBio}
+					<p class="mt-3 rounded-2xl border border-redline-500/20 bg-redline-500/10 px-4 py-3 text-sm text-redline-500">
+						{profileForm.fieldErrors.fanBio}
+					</p>
+				{/if}
+
+				<label class="mt-6 block text-xs uppercase tracking-[0.22em] text-ink-700/70" for="favoriteSportsMoment">
+					Favorite sports moment
+				</label>
+				<textarea class="mt-2 min-h-28 w-full rounded-2xl border border-ink-950/10 bg-cream-100/45 px-4 py-3 text-sm text-ink-950 outline-none transition focus:border-redline-500" id="favoriteSportsMoment" name="favoriteSportsMoment" placeholder="The 2016 Villanova buzzer beater still has permanent real estate in my brain.">{favoriteSportsMoment}</textarea>
+				<p class="mt-3 text-xs leading-6 text-ink-700/70">Optional. Gives the booth one real memory to nod to without turning every answer into fan fiction.</p>
+				{#if profileForm?.fieldErrors?.favoriteSportsMoment}
+					<p class="mt-3 rounded-2xl border border-redline-500/20 bg-redline-500/10 px-4 py-3 text-sm text-redline-500">
+						{profileForm.fieldErrors.favoriteSportsMoment}
+					</p>
+				{/if}
+
+				<div class="mt-4 rounded-2xl border border-ink-950/8 bg-cream-100/80 px-4 py-4">
+					<div class="flex items-start gap-4">
+						{#if avatarUrl}
+							<img alt={`Avatar preview for ${accountName}`} class="h-14 w-14 rounded-full object-cover" src={avatarUrl} />
+						{:else}
+							<div class="flex h-14 w-14 items-center justify-center rounded-full bg-ink-950 text-lg font-semibold text-cream-100">
+								{accountName.slice(0, 1).toUpperCase()}
+							</div>
+						{/if}
+						<div class="min-w-0 flex-1">
+							<p class="text-xs uppercase tracking-[0.22em] text-ink-700/70">Fan card preview</p>
+							<p class="mt-1 text-sm font-semibold text-ink-950">{accountName}</p>
+							{#if location}
+								<p class="mt-1 text-xs uppercase tracking-[0.18em] text-ink-700/70">{location}</p>
+							{/if}
+							{#if fanBio}
+								<p class="mt-3 text-sm leading-6 text-ink-700">{fanBio}</p>
+							{/if}
+							{#if favoriteSportsMoment}
+								<p class="mt-3 text-xs uppercase tracking-[0.18em] text-ink-700/70">Favorite sports moment</p>
+								<p class="mt-1 text-sm leading-6 text-ink-700">{favoriteSportsMoment}</p>
+							{/if}
+						</div>
+					</div>
+				</div>
 				{#if profileForm?.message}
-					<p class={`mt-4 rounded-2xl px-4 py-3 text-sm ${profileForm.fieldErrors?.displayName || profileForm.fieldErrors?.imageUrl ? 'border border-redline-500/20 bg-redline-500/10 text-redline-500' : 'border border-field-500/20 bg-field-500/10 text-field-700'}`}>
+					<p class={`mt-4 rounded-2xl px-4 py-3 text-sm ${profileForm.fieldErrors?.displayName || profileForm.fieldErrors?.fanBio || profileForm.fieldErrors?.favoriteSportsMoment || profileForm.fieldErrors?.imageUrl || profileForm.fieldErrors?.location ? 'border border-redline-500/20 bg-redline-500/10 text-redline-500' : 'border border-field-500/20 bg-field-500/10 text-field-700'}`}>
 						{profileForm.message}
 					</p>
 				{/if}
@@ -352,6 +422,24 @@ async function signOut() {
 							{/if}
 						</div>
 					{/each}
+				</div>
+			</div>
+
+			<div class="mt-5 rounded-2xl bg-white/80 p-5">
+				<p class="text-sm font-semibold text-ink-950">Fan card context</p>
+				<div class="mt-3 grid gap-3">
+					<div class="rounded-2xl border border-ink-950/8 bg-cream-100/75 px-4 py-4">
+						<p class="text-xs uppercase tracking-[0.24em] text-ink-700/70">Location</p>
+						<p class="mt-2 text-sm font-semibold text-ink-950">{location || 'Not set'}</p>
+					</div>
+					<div class="rounded-2xl border border-ink-950/8 bg-cream-100/75 px-4 py-4">
+						<p class="text-xs uppercase tracking-[0.24em] text-ink-700/70">Fan bio</p>
+						<p class="mt-2 text-sm leading-7 text-ink-950">{fanBio || 'Not set'}</p>
+					</div>
+					<div class="rounded-2xl border border-ink-950/8 bg-cream-100/75 px-4 py-4">
+						<p class="text-xs uppercase tracking-[0.24em] text-ink-700/70">Favorite sports moment</p>
+						<p class="mt-2 text-sm leading-7 text-ink-950">{favoriteSportsMoment || 'Not set'}</p>
+					</div>
 				</div>
 			</div>
 

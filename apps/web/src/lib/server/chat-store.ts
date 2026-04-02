@@ -10,6 +10,7 @@ import {
 	searchQuery,
 	searchResult,
 	usageLedger,
+	user,
 	userTeamPreference,
 } from '@larry/db/schema'
 import {
@@ -54,8 +55,11 @@ export type StoredCitation = {
 
 export type StartedConversationTurn = {
 	conversation: ConversationSummary
+	fanBio: string | null
 	favoriteTeam: string | null
+	favoriteSportsMoment: string | null
 	historyMessages: StoredMessage[]
+	location: string | null
 	personaSlug: SportsPersonaSlug
 	rivalTeam: string | null
 	userMessage: StoredMessage
@@ -234,6 +238,24 @@ async function getTeamPreferences(userId: string) {
 	)
 }
 
+async function getUserProfileContext(userId: string) {
+	const [profile] = await db
+		.select({
+			fanBio: user.fanBio,
+			favoriteSportsMoment: user.favoriteSportsMoment,
+			location: user.location,
+		})
+		.from(user)
+		.where(eq(user.id, userId))
+		.limit(1)
+
+	return {
+		fanBio: profile?.fanBio ?? null,
+		favoriteSportsMoment: profile?.favoriteSportsMoment ?? null,
+		location: profile?.location ?? null,
+	}
+}
+
 async function findConversationForUser(userId: string, slug: string) {
 	const [existingConversation] = await db
 		.select(conversationSummaryColumns)
@@ -342,15 +364,19 @@ export async function startConversationTurn(input: {
 		searchRequired: requiresFreshSearch(prompt),
 	})
 
-	const [teamPreferences, historyMessages] = await Promise.all([
+	const [profileContext, teamPreferences, historyMessages] = await Promise.all([
+		getUserProfileContext(input.userId),
 		getTeamPreferences(input.userId),
 		getConversationMessages(activeConversation.id),
 	])
 
 	return {
 		conversation: activeConversation,
+		fanBio: profileContext.fanBio,
 		favoriteTeam: teamPreferences.favoriteTeam,
+		favoriteSportsMoment: profileContext.favoriteSportsMoment,
 		historyMessages,
+		location: profileContext.location,
 		personaSlug,
 		rivalTeam: teamPreferences.rivalTeam,
 		userMessage,

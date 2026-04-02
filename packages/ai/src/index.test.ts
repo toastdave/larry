@@ -21,13 +21,19 @@ describe('ai package', () => {
 	test('builds a system prompt with team context', () => {
 		const prompt = createSystemPrompt({
 			billingTier: 'pro',
+			fanBio: 'Film-room junkie who hates lazy closeouts.',
 			favoriteTeam: 'Knicks',
+			favoriteSportsMoment: 'The Villanova title buzzer beater.',
+			location: 'Queens, NY',
 			rivalTeam: 'Celtics',
 		})
 
 		expect(prompt).toContain('Knicks')
 		expect(prompt).toContain('Celtics')
 		expect(prompt).toContain('pro')
+		expect(prompt).toContain('Film-room junkie')
+		expect(prompt).toContain('Villanova title buzzer beater')
+		expect(prompt).toContain('Queens, NY')
 	})
 
 	test('resolves alternate personas with their own starters', () => {

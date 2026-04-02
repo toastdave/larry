@@ -40,6 +40,7 @@ Status: complete for the current MVP pass.
 - Completed: base Larry persona prompt, seeded persona profile, billing schema, seeded plans, usage-ledger writes for search/inference, runtime persona selection, conversation persona persistence, persona-aware chat UX, account-driven favorite/rival team context in the live prompt path, stronger Vega betting-adjacent guardrails, shared abuse-edge prompt guidance, persona eval cases for regression coverage, product-level safe-response handling for abusive and reckless prompts, automated eval execution in the test suite, and in-product trust-cue UI for persona safety expectations
 
 Status note: chat history search, persona filtering, and cleaner auto-title refinement are now live for the conversation UX.
+Status note: the account fan card now includes location, a short fan bio, and a favorite sports moment that can flow into the prompt context alongside favorite and rival teams.
 
 ## Phase 5 - Billing, Packaging, And Growth
 

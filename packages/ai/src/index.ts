@@ -456,7 +456,10 @@ export function runPersonaEvalSuite(input: {
 
 export function createSystemPrompt(options?: {
 	billingTier?: string | null
+	fanBio?: string | null
 	favoriteTeam?: string | null
+	favoriteSportsMoment?: string | null
+	location?: string | null
 	persona?: SportsPersona | SportsPersonaSlug | string | null
 	rivalTeam?: string | null
 }) {
@@ -473,6 +476,18 @@ export function createSystemPrompt(options?: {
 	const billingLine = options?.billingTier
 		? `The user is on the ${options.billingTier} plan, so be mindful of expensive tool loops.`
 		: 'Prefer efficient tool usage and avoid unnecessary repeated searches.'
+
+	const locationLine = options?.location
+		? `The user says they are watching from ${options.location}.`
+		: null
+
+	const fanBioLine = options?.fanBio
+		? `Use this fan profile note only when it adds natural flavor: ${options.fanBio}.`
+		: null
+
+	const favoriteSportsMomentLine = options?.favoriteSportsMoment
+		? `If it fits naturally, you can nod to this favorite sports memory: ${options.favoriteSportsMoment}.`
+		: null
 
 	const personaSpecificLine =
 		persona.slug === 'scout'
@@ -493,6 +508,9 @@ export function createSystemPrompt(options?: {
 		favoriteTeamLine,
 		rivalTeamLine,
 		billingLine,
+		locationLine,
+		fanBioLine,
+		favoriteSportsMomentLine,
 		personaSpecificLine,
 		safetyLine,
 		'When a user asks for live sports facts, search first and cite the source in the answer with bracketed result numbers like [1] or [2][3] when retrieved context is available.',
