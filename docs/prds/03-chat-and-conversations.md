@@ -22,7 +22,8 @@ Create a sports chat experience that feels conversational, fast, and personality
 - Completed: users can start fresh conversations with Larry, Scout, or Vega and keep that persona attached to the thread
 - Completed: assistant answers now support inline numbered citation references alongside transcript source cards
 - Completed: unsafe prompts now return explicit in-thread safety replies instead of silently relying on the model prompt alone
-- Remaining: better auto-title refinement and history search/filtering
+- Completed: saved conversation history now supports title search and persona filtering in the chat sidebar
+- Remaining: better auto-title refinement
 
 ## Requirements
 

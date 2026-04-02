@@ -1,6 +1,7 @@
 <script lang="ts">
 import { goto } from '$app/navigation'
 import { formatCitationReferenceLabel, splitMessageForCitations } from '$lib/chat/citation-text'
+import { filterConversations, summarizeConversationFilters } from '$lib/chat/conversation-history'
 import {
 	type SportsPersona,
 	type SportsPersonaSlug,
@@ -21,6 +22,10 @@ let draft = $state('Who is the biggest fraud contender in the NBA right now?')
 let activeConversation = $state<PageData['activeConversation']>(null)
 let conversations = $state<PageData['conversations']>([])
 let errorMessage = $state('')
+const historyFilters = $state({
+	personaSlug: 'all' as 'all' | SportsPersonaSlug,
+	search: '',
+})
 let isSending = $state(false)
 let messages = $state<PageData['messages']>([])
 let selectedPersonaSlug = $state<SportsPersonaSlug>(defaultPersonaSlug)
@@ -32,6 +37,22 @@ const derivedLeague = $derived(inferLeague(draft))
 const promptSuggestions = $derived(getConversationStarters(currentPersona.slug))
 const shouldSearch = $derived(requiresFreshSearch(draft))
 const starterTranscript = $derived(getStarterTranscript(currentPersona.slug))
+const filteredConversations = $derived(
+	filterConversations(conversations, {
+		personaSlug: historyFilters.personaSlug === 'all' ? null : historyFilters.personaSlug,
+		search: historyFilters.search,
+	})
+)
+const historyFilterSummary = $derived(
+	summarizeConversationFilters({
+		personaName:
+			historyFilters.personaSlug === 'all'
+				? null
+				: getPersonaBySlug(historyFilters.personaSlug).name,
+		resultCount: filteredConversations.length,
+		search: historyFilters.search,
+	})
+)
 
 $effect(() => {
 	activeConversation = data.activeConversation
@@ -344,14 +365,46 @@ function handleSubmit(event: SubmitEvent) {
 					</a>
 				</div>
 
+				<div class="mt-4 space-y-3 rounded-[1.25rem] border border-ink-950/8 bg-cream-100/70 p-3">
+					<label class="block" for="history-search">
+						<span class="text-[11px] uppercase tracking-[0.24em] text-ink-700/70">History search</span>
+						<input
+							bind:value={historyFilters.search}
+							class="mt-2 w-full rounded-2xl border border-ink-950/10 bg-white px-4 py-3 text-sm text-ink-950 outline-none transition focus:border-redline-500"
+							id="history-search"
+							placeholder="Search saved debate titles"
+						/>
+					</label>
+
+					<div class="flex flex-wrap gap-2">
+						{#each [{ label: 'All booths', slug: 'all' }, ...sportsPersonas.map((persona) => ({ label: persona.name, slug: persona.slug }))] as filterOption (filterOption.slug)}
+							<button
+								class={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] transition ${historyFilters.personaSlug === filterOption.slug ? 'bg-ink-950 text-cream-100' : 'border border-ink-950/10 bg-white text-ink-700 hover:border-redline-500/40'}`}
+								onclick={() => {
+									historyFilters.personaSlug = filterOption.slug as 'all' | SportsPersonaSlug
+								}}
+								type="button"
+							>
+								{filterOption.label}
+							</button>
+						{/each}
+					</div>
+
+					<p class="text-xs uppercase tracking-[0.22em] text-ink-700/65">{historyFilterSummary}</p>
+				</div>
+
 				{#if conversations.length === 0}
 					<p class="mt-4 text-sm leading-7 text-ink-700">
 						No saved debates yet. Pick a booth, fire the opening take, and the transcript will
 						start keeping score.
 					</p>
+				{:else if filteredConversations.length === 0}
+					<p class="mt-4 rounded-2xl border border-dashed border-ink-950/12 bg-white/70 px-4 py-4 text-sm leading-7 text-ink-700">
+						Nothing matches this history search yet. Try a different title keyword or switch booths.
+					</p>
 				{:else}
 					<div class="mt-4 space-y-3">
-						{#each conversations as conversation (conversation.id)}
+						{#each filteredConversations as conversation (conversation.id)}
 							{@const persona = getPersonaDetails(conversation.personaSlug)}
 							<a
 								class={`block rounded-2xl border px-4 py-3 text-sm transition ${activeConversation?.id === conversation.id ? 'border-ink-950 bg-ink-950 text-cream-100' : 'border-ink-950/10 bg-cream-100/75 text-ink-900 hover:border-redline-500/40 hover:bg-white'}`}

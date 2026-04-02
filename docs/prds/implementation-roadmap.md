@@ -41,6 +41,8 @@ Status: partially started.
 - Completed: base Larry persona prompt, seeded persona profile, billing schema, seeded plans, usage-ledger writes for search/inference, runtime persona selection, conversation persona persistence, persona-aware chat UX, account-driven favorite/rival team context in the live prompt path, stronger Vega betting-adjacent guardrails, shared abuse-edge prompt guidance, persona eval cases for regression coverage, product-level safe-response handling for abusive and reckless prompts, and automated eval execution in the test suite
 - Remaining: any extra UI affordances beyond the in-thread guardrail reply
 
+Status note: chat history search and persona filtering are now live, leaving title refinement as the main remaining conversation UX gap.
+
 ## Phase 5 - Billing, Packaging, And Growth
 
 - Add usage ledgers, plan enforcement, and Polar checkout foundations.
