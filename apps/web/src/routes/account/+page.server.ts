@@ -5,7 +5,11 @@ import {
 	isPolarCheckoutEnabled,
 	syncPolarCheckoutForUser,
 } from '$lib/server/polar'
-import { parseDisplayNameInput, readProfileFormValues } from '$lib/server/profile-settings'
+import {
+	parseDisplayNameInput,
+	parseProfileImageInput,
+	readProfileFormValues,
+} from '$lib/server/profile-settings'
 import {
 	parseTeamPreferenceInput,
 	readTeamPreferenceFormValues,
@@ -110,12 +114,14 @@ export const actions: Actions = {
 
 		const values = readProfileFormValues(await request.formData())
 		const displayNameResult = parseDisplayNameInput(values.displayName)
+		const imageUrlResult = parseProfileImageInput(values.imageUrl)
 
-		if (displayNameResult.error) {
+		if (displayNameResult.error || imageUrlResult.error) {
 			return fail(400, {
 				profile: {
 					fieldErrors: {
 						displayName: displayNameResult.error,
+						imageUrl: imageUrlResult.error,
 					},
 					message: 'Fix the profile settings and try again.',
 					values,
@@ -124,6 +130,7 @@ export const actions: Actions = {
 		}
 
 		const nextDisplayName = displayNameResult.value
+		const nextImageUrl = imageUrlResult.value
 
 		if (!nextDisplayName) {
 			return fail(400, {
@@ -140,6 +147,7 @@ export const actions: Actions = {
 		await db
 			.update(user)
 			.set({
+				image: nextImageUrl,
 				name: nextDisplayName,
 				updatedAt: new Date(),
 			})

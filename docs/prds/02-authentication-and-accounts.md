@@ -20,8 +20,9 @@ Launch a flexible account system that supports guest entry today and durable pre
 - Completed: account now shows current entitlement state, monthly usage, and plan-upgrade messaging from the seeded billing model
 - Completed: account now exposes Polar sandbox checkout entry points and return-state messaging for billing flows
 - Completed: account now supports display-name editing without leaving the main settings surface
+- Completed: account now supports avatar URL editing and preview so the user identity can surface in the main app chrome
 - Completed: guest mode can now open the chat shell, browse personas, and route users into auth when they want live answers and saved history
-- Remaining: richer profile editing beyond the display name field
+- Remaining: richer profile editing beyond the core display name and avatar fields
 
 ## Requirements
 

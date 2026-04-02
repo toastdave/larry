@@ -13,6 +13,7 @@ const profileForm = $derived(form?.profile ?? null)
 const preferencesForm = $derived(form?.preferences ?? null)
 const accountName = $derived(profileForm?.values?.displayName ?? data.user.name)
 const displayName = $derived(profileForm?.values?.displayName ?? data.user.name)
+const avatarUrl = $derived(profileForm?.values?.imageUrl ?? data.user.image ?? '')
 const favoriteLeague = $derived(
 	preferencesForm?.values?.favoriteLeague ?? data.preferences.favorite?.league ?? ''
 )
@@ -125,8 +126,28 @@ async function signOut() {
 						{profileForm.fieldErrors.displayName}
 					</p>
 				{/if}
+
+				<label class="mt-6 block text-xs uppercase tracking-[0.22em] text-ink-700/70" for="imageUrl">
+					Avatar image URL
+				</label>
+				<input class="mt-2 w-full rounded-2xl border border-ink-950/10 bg-cream-100/45 px-4 py-3 text-sm text-ink-950 outline-none transition focus:border-redline-500" id="imageUrl" name="imageUrl" placeholder="https://example.com/avatar.png" value={avatarUrl} />
+				<p class="mt-3 text-xs leading-6 text-ink-700/70">Optional. Use an http or https image URL if you want an avatar in the account header.</p>
+				{#if avatarUrl}
+					<div class="mt-4 flex items-center gap-4 rounded-2xl border border-ink-950/8 bg-cream-100/80 px-4 py-4">
+						<img alt={`Avatar preview for ${accountName}`} class="h-14 w-14 rounded-full object-cover" src={avatarUrl} />
+						<div>
+							<p class="text-xs uppercase tracking-[0.22em] text-ink-700/70">Preview</p>
+							<p class="mt-1 text-sm font-semibold text-ink-950">{accountName}</p>
+						</div>
+					</div>
+				{/if}
+				{#if profileForm?.fieldErrors?.imageUrl}
+					<p class="mt-3 rounded-2xl border border-redline-500/20 bg-redline-500/10 px-4 py-3 text-sm text-redline-500">
+						{profileForm.fieldErrors.imageUrl}
+					</p>
+				{/if}
 				{#if profileForm?.message}
-					<p class={`mt-4 rounded-2xl px-4 py-3 text-sm ${profileForm.fieldErrors?.displayName ? 'border border-redline-500/20 bg-redline-500/10 text-redline-500' : 'border border-field-500/20 bg-field-500/10 text-field-700'}`}>
+					<p class={`mt-4 rounded-2xl px-4 py-3 text-sm ${profileForm.fieldErrors?.displayName || profileForm.fieldErrors?.imageUrl ? 'border border-redline-500/20 bg-redline-500/10 text-redline-500' : 'border border-field-500/20 bg-field-500/10 text-field-700'}`}>
 						{profileForm.message}
 					</p>
 				{/if}

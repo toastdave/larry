@@ -11,6 +11,7 @@ type DisplayNameParseResult =
 export function readProfileFormValues(formData: FormData) {
 	return {
 		displayName: String(formData.get('displayName') ?? '').trim(),
+		imageUrl: String(formData.get('imageUrl') ?? '').trim(),
 	}
 }
 
@@ -32,5 +33,45 @@ export function parseDisplayNameInput(displayName: string): DisplayNameParseResu
 	return {
 		error: null,
 		value: displayName,
+	}
+}
+
+type ImageUrlParseResult =
+	| {
+			error: string
+			value: null
+	  }
+	| {
+			error: null
+			value: string | null
+	  }
+
+export function parseProfileImageInput(imageUrl: string): ImageUrlParseResult {
+	if (!imageUrl) {
+		return {
+			error: null,
+			value: null,
+		}
+	}
+
+	try {
+		const url = new URL(imageUrl)
+
+		if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+			return {
+				error: 'Use an http or https image URL.',
+				value: null,
+			}
+		}
+
+		return {
+			error: null,
+			value: url.toString(),
+		}
+	} catch {
+		return {
+			error: 'Use a valid image URL or leave it blank.',
+			value: null,
+		}
 	}
 }

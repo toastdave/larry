@@ -25,7 +25,10 @@ const { children, data } = $props<{ data: LayoutData; children: import('svelte')
 				Chat
 			</a>
 			{#if data.user}
-				<a class="rounded-full border border-ink-950/10 bg-white/70 px-4 py-2 text-ink-700 backdrop-blur" href="/account">
+				<a class="flex items-center gap-2 rounded-full border border-ink-950/10 bg-white/70 px-4 py-2 text-ink-700 backdrop-blur" href="/account">
+					{#if data.user.image}
+						<img alt={data.user.name} class="h-7 w-7 rounded-full object-cover" src={data.user.image} />
+					{/if}
 					{data.user.name}
 				</a>
 			{:else}
