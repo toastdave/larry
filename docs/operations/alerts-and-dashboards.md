@@ -15,6 +15,21 @@
 - Polar webhook failures or no billing events arriving for an expected checkout window
 - Sudden spike in hard plan-enforcement blocks after a pricing or plan change
 
+## Wired now
+
+- `bun run ops:alerts` evaluates hosted thresholds against `provider_event`, `search_query`, and `search_result`
+- `.github/workflows/ops-alerts.yml` runs the hosted threshold check every 10 minutes and on manual dispatch
+- Optional delivery hook: set `OPS_ALERT_WEBHOOK_URL` so the script posts a JSON alert payload when thresholds trip
+
+## Threshold environment variables
+
+- `OPS_ALERT_WINDOW_MINUTES` - rolling lookback window, defaults to `10`
+- `OPS_MIN_SAMPLE_SIZE` - minimum event volume before rate-based alerts fire, defaults to `5`
+- `OPS_AI_FAILURE_RATE_THRESHOLD` - hosted AI failure-rate trigger, defaults to `0.1`
+- `OPS_SEARCH_ZERO_RATE_THRESHOLD` - live-search zero-result trigger, defaults to `0.4`
+- `OPS_BILLING_FAILURE_THRESHOLD` - billing failure-count trigger, defaults to `3`
+- `OPS_PLAN_BLOCK_THRESHOLD` - hard plan-enforcement spike trigger, defaults to `10`
+
 ## Suggested thresholds
 
 - AI failures above 10 percent for 10 minutes

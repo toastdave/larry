@@ -1,0 +1,43 @@
+name: Ops Alerts
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  hosted-threshold-checks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.10
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Require hosted database secret
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DATABASE_URL is required for ops alerts."
+            exit 1
+          fi
+
+      - name: Run hosted alert thresholds
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          OPS_ALERT_WEBHOOK_URL: ${{ secrets.OPS_ALERT_WEBHOOK_URL }}
+          OPS_ALERT_WINDOW_MINUTES: ${{ vars.OPS_ALERT_WINDOW_MINUTES || '10' }}
+          OPS_AI_FAILURE_RATE_THRESHOLD: ${{ vars.OPS_AI_FAILURE_RATE_THRESHOLD || '0.1' }}
+          OPS_SEARCH_ZERO_RATE_THRESHOLD: ${{ vars.OPS_SEARCH_ZERO_RATE_THRESHOLD || '0.4' }}
+          OPS_BILLING_FAILURE_THRESHOLD: ${{ vars.OPS_BILLING_FAILURE_THRESHOLD || '3' }}
+          OPS_PLAN_BLOCK_THRESHOLD: ${{ vars.OPS_PLAN_BLOCK_THRESHOLD || '10' }}
+          OPS_MIN_SAMPLE_SIZE: ${{ vars.OPS_MIN_SAMPLE_SIZE || '5' }}
+        run: bun run ops:alerts

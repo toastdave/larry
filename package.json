@@ -12,6 +12,7 @@
 		"test": "bun run --cwd apps/web test && bun run --cwd packages/db test && bun run --cwd packages/ai test && bun run --cwd packages/search test",
 		"db:generate": "bun run --cwd packages/db generate",
 		"db:migrate": "bun run --cwd packages/db migrate",
+		"ops:alerts": "bun run --cwd packages/db ops:alerts",
 		"db:push": "bun run --cwd packages/db push",
 		"db:studio": "bun run --cwd packages/db studio",
 		"seed": "bun run --cwd packages/db seed",

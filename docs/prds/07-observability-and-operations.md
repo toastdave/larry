@@ -18,7 +18,7 @@ Make every retrieval and response path inspectable enough that product, support,
 - Completed: metadata captures whether a response came from the local or hosted AI route
 - Completed: billing-limit blocks now emit provider events so support can explain why a chat turn was rejected
 - Completed: operational runbooks now cover local development recovery, provider outages, billing reconciliation, and the first alert/dashboard definitions in `docs/operations`
-- Remaining: live hosted dashboard wiring and automated alert delivery
+- Completed: hosted threshold checks now run from a scheduled GitHub Actions workflow with optional webhook delivery for AI, search, billing, and plan-enforcement spikes
 
 ## Requirements
 

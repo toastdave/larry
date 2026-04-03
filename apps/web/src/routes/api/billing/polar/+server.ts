@@ -1,4 +1,8 @@
-import { applyPolarCustomerStateWebhook, hasProcessedBillingEvent } from '$lib/server/polar'
+import {
+	applyPolarCustomerStateWebhook,
+	hasProcessedBillingEvent,
+	recordBillingProviderEvent,
+} from '$lib/server/polar'
 import { WebhookVerificationError, validateEvent } from '@polar-sh/sdk/webhooks'
 import { error, json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
@@ -22,16 +26,33 @@ function getWebhookHeaders(headers: Headers) {
 
 export const POST: RequestHandler = async ({ request }) => {
 	const webhookSecret = process.env.POLAR_WEBHOOK_SECRET
+	const webhookId = request.headers.get('webhook-id')
 
 	if (!webhookSecret) {
+		await recordBillingProviderEvent({
+			eventName: 'webhook.configuration_missing',
+			payload: {
+				errorMessage: 'POLAR_WEBHOOK_SECRET is missing.',
+				stage: 'webhook',
+				status: 'failure',
+			},
+			referenceId: webhookId,
+		})
 		throw error(503, 'POLAR_WEBHOOK_SECRET is missing.')
 	}
 
 	const rawBody = await request.text()
 	const webhookHeaders = getWebhookHeaders(request.headers)
-	const webhookId = request.headers.get('webhook-id')
 
 	if (!webhookId) {
+		await recordBillingProviderEvent({
+			eventName: 'webhook.missing_id',
+			payload: {
+				errorMessage: 'Missing Polar webhook id header.',
+				stage: 'webhook',
+				status: 'failure',
+			},
+		})
 		throw error(400, 'Missing Polar webhook id header.')
 	}
 
@@ -51,6 +72,17 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		return json({ ok: true }, { status: 202 })
 	} catch (cause) {
+		await recordBillingProviderEvent({
+			eventName:
+				cause instanceof WebhookVerificationError ? 'webhook.signature_invalid' : 'webhook.failed',
+			payload: {
+				errorMessage: cause instanceof Error ? cause.message : 'Polar webhook handling failed.',
+				stage: 'webhook',
+				status: 'failure',
+			},
+			referenceId: webhookId,
+		})
+
 		if (cause instanceof WebhookVerificationError) {
 			throw error(403, 'Invalid Polar webhook signature.')
 		}

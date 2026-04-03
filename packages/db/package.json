@@ -12,6 +12,7 @@
 		"test": "bun test",
 		"generate": "drizzle-kit generate",
 		"migrate": "drizzle-kit migrate",
+		"ops:alerts": "bun run src/ops-alert-check.ts",
 		"push": "drizzle-kit push",
 		"studio": "drizzle-kit studio",
 		"seed": "bun run src/seed.ts"

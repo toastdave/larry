@@ -68,19 +68,34 @@ async function persistBillingEvent(input: {
 		.values({
 			eventName: input.eventName,
 			payload: input.payload as Record<string, unknown>,
+			processedAt: new Date(),
 			providerEventId: input.providerEventId,
 		})
 		.onConflictDoNothing()
 
-	await recordModelProviderEvent({
+	await recordBillingProviderEvent({
+		eventName: input.eventName,
 		payload: {
-			eventName: input.eventName,
 			stage: input.stage,
 			userId: input.userId ?? null,
 		},
+		referenceId: input.providerEventId,
+	})
+}
+
+export async function recordBillingProviderEvent(input: {
+	eventName: string
+	payload: Record<string, unknown>
+	referenceId?: string | null
+}) {
+	await recordModelProviderEvent({
+		payload: {
+			eventName: input.eventName,
+			...input.payload,
+		},
 		providerKind: 'billing',
 		providerName: `polar-${getPolarServer()}`,
-		referenceId: input.providerEventId,
+		referenceId: input.referenceId ?? null,
 	})
 }
 
