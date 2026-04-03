@@ -47,4 +47,4 @@ This runbook covers the release path after local development is healthy and CI i
 - Signed-in chat can create a new conversation
 - A live sports prompt returns citations or a safe fallback
 - Account shows plan, usage, and checkout state without errors
-- Hosted ops threshold workflow stays green or posts an explicit alert for follow-up
+- The `ops:alerts` command is available for manual smoke checks now and can be moved into Railway scheduling later

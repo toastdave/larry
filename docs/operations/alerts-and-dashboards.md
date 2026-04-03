@@ -17,9 +17,10 @@
 
 ## Wired now
 
-- `bun run ops:alerts` evaluates hosted thresholds against `provider_event`, `search_query`, and `search_result`
-- `.github/workflows/ops-alerts.yml` runs the hosted threshold check every 10 minutes and on manual dispatch
+- `bun run ops:alerts` evaluates threshold health against `provider_event`, `search_query`, and `search_result`
+- `bun run ops:alerts:docker` runs the same check inside the Compose web container for the current Docker and Tailscale workflow
 - Optional delivery hook: set `OPS_ALERT_WEBHOOK_URL` so the script posts a JSON alert payload when thresholds trip
+- The same command can move to a Railway cron or scheduled job later without changing the app code
 
 ## Threshold environment variables
 

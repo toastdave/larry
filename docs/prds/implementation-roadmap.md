@@ -58,7 +58,7 @@ Status: complete for the current MVP pass, with pricing, packaging, growth hooks
 - Completed: seeded plans, entitlement primitives, usage-ledger writes, account-level billing summary, chat/account upgrade messaging, hard message and live-lookup enforcement in chat, Polar sandbox checkout routes, webhook/return-based entitlement sync, a usage-first packaging decision that keeps all personas available across plans, shareable booth invite hooks, and sponsor/disclosure guardrails for future experiments
 
 Status note: chat now includes a recap-card sharing surface so booth invites can carry the opening take, latest read, and citation context without exposing a private full transcript.
-Status note: hosted ops checks now run on a schedule with threshold-based AI, search, billing, and plan-enforcement alerts plus optional webhook delivery.
+Status note: ops checks now run through a compose-friendly command path with threshold-based AI, search, billing, and plan-enforcement alerts plus optional webhook delivery for future Railway scheduling.
 
 ## Cross-cutting launch checklist
 

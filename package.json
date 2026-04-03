@@ -13,6 +13,7 @@
 		"db:generate": "bun run --cwd packages/db generate",
 		"db:migrate": "bun run --cwd packages/db migrate",
 		"ops:alerts": "bun run --cwd packages/db ops:alerts",
+		"ops:alerts:docker": "docker compose exec web bun run ops:alerts",
 		"db:push": "bun run --cwd packages/db push",
 		"db:studio": "bun run --cwd packages/db studio",
 		"seed": "bun run --cwd packages/db seed",

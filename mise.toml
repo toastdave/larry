@@ -61,6 +61,15 @@ depends = ["install"]
 run = "bun run build"
 description = "Build the SvelteKit app"
 
+[tasks."ops:alerts"]
+depends = ["install"]
+run = "bun run ops:alerts"
+description = "Run local ops alert threshold checks"
+
+[tasks."ops:alerts:docker"]
+run = "bun run ops:alerts:docker"
+description = "Run ops alert threshold checks inside the web container"
+
 [tasks."db:generate"]
 depends = ["install"]
 run = "bun run db:generate"

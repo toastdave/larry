@@ -202,6 +202,8 @@ mise run check
 mise run lint
 mise run test
 mise run build
+mise run ops:alerts
+mise run ops:alerts:docker
 mise run db:generate
 mise run db:migrate
 mise run db:studio
